@@ -10,7 +10,6 @@ import spacy
 from spacy.lang.en import English
 from tqdm import tqdm
 
-COUNT = 0
 PAPERS: str = "../dataset/papers.csv"
 TRAIN_TOKEN_ROWS_PATH = 'train_token_rows.pk'
 
@@ -20,6 +19,7 @@ def main():
     tokenizer = English().Defaults.create_tokenizer(nlp)
     df = pd.read_csv(PAPERS)
     train, dev, test = np.split(df, [int(.8 * len(df)), int(.9 * len(df))])
+    similarity_sum = 0
 
     if os.path.isfile(TRAIN_TOKEN_ROWS_PATH):
         with open(TRAIN_TOKEN_ROWS_PATH, 'rb') as handle:
@@ -35,19 +35,19 @@ def main():
         for index, train_tokens in enumerate(train_token_rows):
             rankings.append((jaccard_similarity(dev_tokens, train_tokens), index))
         rankings.sort(key=lambda x: x[0], reverse=True)
-        rankings = rankings[:10]
-        print(rankings)
+        similarity_sum += sum(r[0] for r in rankings[:10])
+
+    print(similarity_sum)
 
 
 def jaccard_similarity(a, b):
+    if not a and not b:
+        return 0
     c = a & b
     return len(c) / (len(a) + len(b) - len(c))
 
 
 def get_tokens(tokenizer, paper: str) -> Set[str]:
-    global COUNT
-    COUNT += 1
-    print(COUNT)
     paper = paper.lower()
     abstract_index = paper.find('abstract')
     # Remove the headers and citations
