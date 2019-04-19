@@ -5,7 +5,6 @@ from typing import Set
 
 import spacy
 from spacy.lang.en import English
-import statistics
 from tqdm import tqdm
 
 PAPERS: str = "../dataset/papers.json"
