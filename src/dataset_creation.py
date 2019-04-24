@@ -25,8 +25,7 @@ def main():
 		    with gzip.open(name) as f:
 			    for line in f:
 				    parsed_json = json.loads(line)
-				    # Breaks here
-				    if line['venue'] in ['ACL', 'NAACL','EMNLP']:
+				    if parsed_json['venue'] in ['ACL', 'NAACL','EMNLP']:
 					    out.write(line + '\n')
 							
 
