@@ -10,7 +10,6 @@ dependencies:
   - libstdcxx-ng=8.2.0=hdf63c60_1
   - ncurses=6.1=he6710b0_1
   - openssl=1.1.1b=h7b6447c_1
-  - pip=19.0.3=py36_0
   - python=3.6.8=h0371630_0
   - readline=7.0=h7b6447c_5
   - setuptools=41.0.0=py36_0
@@ -83,6 +82,7 @@ dependencies:
     - packaging==18.0
     - parsimonious==0.8.0
     - pbr==5.1.1
+    - pip==19.1
     - plac==0.9.6
     - pluggy==0.8.1
     - preshed==2.0.1
