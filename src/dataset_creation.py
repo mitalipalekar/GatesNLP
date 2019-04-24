@@ -4,41 +4,39 @@ import os
 import gzip
 import glob
 import json
-
+from tqdm import tqdm
 
 BASE_URL = 'https://s3-us-west-2.amazonaws.com/ai2-s2-research-public/open-corpus/'
-OUTPUT = 'dataset_final'
-
-def get_corpus_files(filename):
-    return [line.strip() for line in filename if line.startswith('corpus')]
+OUTPUT = 'temp'
+VENUES = ['ACL', 'NAACL', 'EMNLP']
 
 
 def main():
     manifest_file = open('manifest.txt', "r")
     corpus_files = get_corpus_files(manifest_file)
+
+    # Remember this is append, make sure your file doesn't exist
     with open(OUTPUT, 'a+') as out:
-        # Reads one file for now, fix bugs and then do all
-        for corpus_file in corpus_files:
+        for corpus_file in tqdm(corpus_files, desc='Corpus'):
             wget.download(BASE_URL + corpus_file)
             name = corpus_file[corpus_file.index('/') + 1:]
-            with gzip.open(name) as f:
-                i = 0
-                for line in f:
-                    if i % 500 == 0:
-                        print(str(i) + ' processed')
-                    i = i + 1
-                    parsed_json = json.loads(line)
-                    if parsed_json['venue'] in ['ACL', 'NAACL','EMNLP']:
-                        out.write(line.decode())
-							
-
+            process_corpus(name, out)
             # remove files after done
             for f in glob.glob("s2*"):
                 os.remove(f)
-		    
 
+
+def process_corpus(name, out):
+    with gzip.open(name) as f:
+        for line in tqdm(f, desc='Line'):
+            parsed_json = json.loads(line)
+            if parsed_json['venue'] in VENUES:
+                out.write(line.decode())
+
+
+def get_corpus_files(filename):
+    return [line.strip() for line in filename if line.startswith('corpus')]
 
 
 if __name__ == '__main__':
     main()
-
