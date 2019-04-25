@@ -53,10 +53,9 @@ def main():
         if len(out_citations):
             # gets the rankings of the training papers in the correct order
             ranking_ids = get_ids(rankings, train_ids)
-            for out_citation in out_citations:
-                if out_citation in ranking_ids:
-                    eval_score.append(1.0 / (ranking_ids.index(out_citation) + 1))
-                    break
+            find_citation = next((out_citation for out_citation in out_citations if out_citation in ranking_ids), None)
+            if find_citation:
+                eval_score.append(1.0 / (ranking_ids.index(find_citation) + 1))
 
             # PRINT TOP 10 TITLES PER TEST PAPER
             paper_titles = get_relevant_papers(rankings[:10], train_title)
@@ -88,8 +87,8 @@ def get_ids(rankings, train_ids):
 
 def split_data(data, start: float, end: float):
     return (data[:int(start * len(data))],
-                data[int(start * len(data)): int(end * len(data))],
-                data[int(end * len(data)):])
+            data[int(start * len(data)): int(end * len(data))],
+            data[int(end * len(data)):])
 
 
 if __name__ == '__main__':
