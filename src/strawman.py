@@ -7,7 +7,7 @@ import spacy
 from spacy.lang.en import English
 from tqdm import tqdm
 
-PAPERS: str = "../dataset/papers.json"
+PAPERS: str = "dataset_final"
 
 
 def main():
@@ -34,7 +34,7 @@ def main():
     train_token_rows = [set(get_tokens(tokenizer, paper)) for paper in train_abstracts]
 
     # get file to write titles too
-    f = open("titles_similar.txt", "w")
+    f = open("titles_similar_dataset_final.txt", "w")
     f.write("test title, top-10 similar papers\n")
 
     # evaluation metric
@@ -86,7 +86,7 @@ def get_ids(rankings, train_ids):
 
 
 def split_data(data, start: float, end: float):
-    return data(data[:int(start * len(data))],
+    return (data[:int(start * len(data))],
                 data[int(start * len(data)): int(end * len(data))],
                 data[int(end * len(data)):])
 
