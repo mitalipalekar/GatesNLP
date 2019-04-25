@@ -24,7 +24,7 @@ def tf_idf_ranking():
     vectorizer = TfidfVectorizer()
     abstracts = []
     count = 0
-    with open(PAPERS, 'r') as f:
+    with open(PAPERS, 'rb') as f:
         for line in tqdm(f):
             count += 1
             parsed_json = json.loads(line)
@@ -41,7 +41,7 @@ def main():
     abstracts = []
     titles = []
     out_citations = []
-    with open(PAPERS, 'r') as f:
+    with open(PAPERS, 'rb') as f:
         for line in tqdm(f):
             ids.append(json.loads(line)['id'])
             abstracts.append(json.loads(line)['paperAbstract'])
