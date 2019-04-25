@@ -1,13 +1,36 @@
 #! /usr/bin/env python3
 
+import sys
 import json
 from typing import Set
 
 import spacy
 from spacy.lang.en import English
 from tqdm import tqdm
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from scipy import spatial
+
+from numpy import dot
+from numpy.linalg import norm
+
 
 PAPERS: str = "dataset_final"
+
+
+def tf_idf_ranking():
+    nlp = spacy.load("en_core_web_sm")
+    tokenizer = English().Defaults.create_tokenizer(nlp)
+    vectorizer = TfidfVectorizer()
+    abstracts = []
+    count = 0
+    with open(PAPERS, 'r') as f:
+        for line in tqdm(f):
+            count += 1
+            parsed_json = json.loads(line)
+            abstracts.append(parsed_json['paperAbstract'])
+
+    return vectorizer.fit_transform(abstracts).toarray()
 
 
 def main():
@@ -38,18 +61,21 @@ def main():
     f.write("test title, top-10 similar papers\n")
 
     # evaluation metric
+    tfidf_matrix = tf_idf_ranking()
     eval_score = []
-    for i, test_row in tqdm(enumerate(test_abstracts)):
+    for i, dev_row in tqdm(enumerate(dev_abstracts)):
         rankings = []
-        test_tokens = set(get_tokens(tokenizer, test_row))
+        # dev_tokens = set(get_tokens(tokenizer, dev_row))
         # get jaccard similarity for all the papers
         for index, train_tokens in enumerate(train_token_rows):
-            rankings.append((jaccard_similarity(test_tokens, train_tokens), index))
+            a = tfidf_matrix[i + len(train_token_rows)]
+            b = tfidf_matrix[index]
+            rankings.append((dot(a, b)/(norm(a)*norm(b)), index))
         rankings.sort(key=lambda x: x[0], reverse=True)
 
         # EVALUATION METRIC LOGIC
         # gets citations if there are any
-        out_citations = test_out_citations[i]
+        out_citations = dev_out_citations[i]
         if len(out_citations):
             # gets the rankings of the training papers in the correct order
             ranking_ids = get_ids(rankings, train_ids)
