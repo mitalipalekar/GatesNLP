@@ -56,6 +56,7 @@ def main():
             for out_citation in out_citations:
                 if out_citation in ranking_ids:
                     eval_score.append(1.0 / (ranking_ids.index(out_citation) + 1))
+                    break
 
             # PRINT TOP 10 TITLES PER TEST PAPER
             paper_titles = get_relevant_papers(rankings[:10], train_title)
