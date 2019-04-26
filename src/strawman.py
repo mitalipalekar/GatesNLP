@@ -83,7 +83,7 @@ def main():
     tfidf_matrix = tf_idf_ranking()
     eval_score = []
     matching_citation_count = 0
-    max_rank = float("-inf")
+    min_rank = float("inf")
     for i, eval_row in tqdm(enumerate(eval_abstracts)):
         rankings = []
         dev_tokens = set(get_tokens(tokenizer, eval_row, lemmatize))
@@ -110,9 +110,10 @@ def main():
             if len(list_citations):
                 matching_citation_count += 1
                 rank = ranking_ids.index(list_citations[0]) + 1
-                max_rank = max(max_rank, rank)
+                min_rank = min(min_rank, rank)
                 eval_score.append(1.0 / rank)
 
+            """
             print("PAPER " + str(i))
             print(eval_title[i])
             print(eval_abstracts[i])
@@ -125,13 +126,14 @@ def main():
             print("incorrect papers")
             print_top_three(incorrect_rankings, train_ids, train_title, train_abstracts)
             print()
+            """
 
             # PRINT TOP 10 TITLES PER TEST PAPER
             # paper_titles = get_relevant_papers(rankings[:10], train_title)
             # f.write(eval_title[i] + "\n " + ','.join(list(paper_titles)) + "\n\n")
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
-    print("max rank = " + str(max_rank))
+    print("min rank = " + str(min_rank))
     print(sum(eval_score) / float(len(eval_ids)))
     f.close()
 
