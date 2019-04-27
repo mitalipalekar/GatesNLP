@@ -1,5 +1,6 @@
 name: GatesNLP
 channels:
+  - pytorch
   - conda-forge
   - defaults
 dependencies:
@@ -53,6 +54,7 @@ dependencies:
   - kiwisolver=1.0.1=py36he980bc4_1002
   - libpng=1.6.36=h2a8f88b_0
   - libprotobuf=3.7.1=h1a1b453_0
+  - libtiff=4.0.10=hb898794_2
   - markupsafe=1.1.1=py36hfa6e2cd_0
   - matplotlib=3.0.3=py36_1
   - matplotlib-base=3.0.3=py36h3e3dc42_1
@@ -63,13 +65,14 @@ dependencies:
   - more-itertools=6.0.0=py36_0
   - moto=1.3.4=py_0
   - msgpack-numpy=0.4.3.2=py36_0
-  - msgpack-python=0.6.1=py36he980bc4_0
   - murmurhash=1.0.2=py36h33f27b4_0
+  - ninja=1.9.0=py36h74a9793_0
   - nltk=3.4.1=py36_0
   - numpy=1.15.4=py36ha559c80_0
   - numpy-base=1.15.4=py36h8128ebf_0
   - numpydoc=0.8.0=py36_0
   - oauthlib=3.0.1=py_0
+  - olefile=0.46=py36_0
   - openssl=1.1.1b=he774522_1
   - overrides=1.9=py_0
   - packaging=19.0=py36_0
@@ -77,6 +80,7 @@ dependencies:
   - parsimonious=0.8.0=py_0
   - patsy=0.5.1=py36_0
   - pbr=5.1.3=py_0
+  - pillow=6.0.0=py36hdc69c19_0
   - pip=19.0.3=py36_0
   - plac=0.9.6=py36_0
   - pluggy=0.9.0=py36_0
@@ -99,10 +103,10 @@ dependencies:
   - python-dateutil=2.8.0=py36_0
   - python-jose=2.0.2=py36_0
   - python-wget=3.2=py_0
+  - pytorch-cpu=1.0.1=py3.6_cpu_1
   - pytz=2019.1=py_0
   - pyyaml=3.13=py36hfa6e2cd_1001
   - qt=5.9.7=vc14h73c81de_0
-  - regex=2019.04.14=py36he774522_0
   - requests=2.21.0=py36_0
   - requests-oauthlib=1.2.0=py_0
   - responses=0.9.0=py_0
@@ -128,7 +132,9 @@ dependencies:
   - statsmodels=0.9.0=py36hfa6e2cd_1000
   - tensorboardx=1.2=py_0
   - thinc=6.12.1=py36hb854c30_0
+  - tk=8.6.8=hfa6e2cd_0
   - toolz=0.9.0=py36_0
+  - torchvision-cpu=0.2.2=py_3
   - tornado=6.0.2=py36hfa6e2cd_0
   - tqdm=4.31.1=py36_1
   - twython=3.7.0=py36_0
@@ -145,7 +151,24 @@ dependencies:
   - wincertstore=0.2=py36_1002
   - wrapt=1.10.11=py36hfa6e2cd_2
   - xmltodict=0.12.0=py_0
+  - xz=5.2.4=h2fa13f4_4
   - yaml=0.1.7=hfa6e2cd_1001
   - zlib=1.2.11=h62dcd97_3
+  - zstd=1.3.7=h508b16e_0
   - pip:
+    - allennlp==0.8.3
+    - editdistance==0.5.3
     - en-core-web-sm==2.0.0
+    - flask-cors==3.0.7
+    - ftfy==5.5.1
+    - gevent==1.4.0
+    - greenlet==0.4.15
+    - h5py==2.9.0
+    - msgpack==0.5.6
+    - pypiwin32==223
+    - pytorch-pretrained-bert==0.6.2
+    - pywin32==224
+    - regex==2018.01.10
+    - sqlparse==0.3.0
+    - wcwidth==0.1.7
+    - word2number==1.1
