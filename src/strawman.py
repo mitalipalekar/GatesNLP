@@ -27,7 +27,7 @@ def tf_idf_ranking():
     with open(PAPERS, 'rb') as f:
         for line in tqdm(f):
             parsed_json = json.loads(line)
-            abstracts.append(parsed_json['paperAbstract'])
+            abstracts.append(parsed_json['title'] + " " + parsed_json['paperAbstract'])
 
     return vectorizer.fit_transform(abstracts).toarray()
 
@@ -58,7 +58,7 @@ def main():
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
     # gets the tokens of the training set
-    train_token_rows = [set(get_tokens(tokenizer, paper, lemmatize)) for paper in train_abstracts]
+    train_token_rows = [set(get_tokens(tokenizer, paper[0] + " " + paper[1], lemmatize)) for paper in zip(train_title, train_abstracts)]
 
     total_count = 0
     citation_counts = dict()
@@ -79,22 +79,22 @@ def main():
     f = open("titles_similar_dataset_final.txt", "w", encoding="utf-8")
     f.write("test title, top-10 similar papers\n")
 
-    # evaluation metric
+    # calculate our evaluation metric
     tfidf_matrix = tf_idf_ranking()
     eval_score = []
     matching_citation_count = 0
     min_rank = float("inf")
     for i, eval_row in tqdm(enumerate(eval_abstracts)):
         rankings = []
-        dev_tokens = set(get_tokens(tokenizer, eval_row, lemmatize))
-        # get jaccard similarity for all the papers
-        for index, train_tokens in enumerate(train_token_rows):
-            a = tfidf_matrix[i + len(train_token_rows)]
-            b = tfidf_matrix[index]
+        dev_tokens = set(get_tokens(tokenizer, eval_title[i] + " " + eval_row, lemmatize))
 
+        # rank all the papers in the training set
+        for index, train_tokens in enumerate(train_token_rows):
             if is_jaccard:
                 score = jaccard_similarity(dev_tokens, train_tokens)
             else:
+                a = tfidf_matrix[i + len(train_token_rows)]
+                b = tfidf_matrix[index]
                 score = dot(a, b)/(norm(a)*norm(b))
             rankings.append((score, index))
         rankings.sort(key=lambda x: x[0], reverse=True)
@@ -134,7 +134,7 @@ def main():
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
     print("min rank = " + str(min_rank))
-    print(sum(eval_score) / float(len(eval_ids)))
+    print(sum(eval_score) / matching_citation_count)
     f.close()
 
 
