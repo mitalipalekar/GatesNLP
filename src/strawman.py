@@ -23,13 +23,13 @@ PAPERS: str = "dataset_final"
 
 def tf_idf_ranking():
     vectorizer = TfidfVectorizer()
-    abstracts = []
+    text = []
     with open(PAPERS, 'rb') as f:
         for line in tqdm(f):
             parsed_json = json.loads(line)
-            abstracts.append(parsed_json['title'] + " " + parsed_json['paperAbstract'])
+            text.append(parsed_json['title'] + " " + parsed_json['paperAbstract'])
 
-    return vectorizer.fit_transform(abstracts).toarray()
+    return vectorizer.fit_transform(text).toarray()
 
 
 def main():
@@ -105,11 +105,11 @@ def main():
         if len(out_citations):
             # gets the rankings of the training papers in the correct order
             ranking_ids = get_ids(rankings, train_ids)
-            list_citations = [out_citation for out_citation in out_citations if out_citation in ranking_ids]
+            true_citations = [citation for citation in ranking_ids if citation in out_citations]
 
-            if len(list_citations):
+            if len(true_citations):
                 matching_citation_count += 1
-                rank = ranking_ids.index(list_citations[0]) + 1
+                rank = ranking_ids.index(true_citations[0]) + 1
                 min_rank = min(min_rank, rank)
                 eval_score.append(1.0 / rank)
 
@@ -118,13 +118,12 @@ def main():
             print(eval_title[i])
             print(eval_abstracts[i])
 
-            correct_rankings = list(filter(lambda x: x in train_ids, list_citations))
             print("correct papers")
-            print_top_three(correct_rankings, train_ids, train_title, train_abstracts)
+            print_top_three(true_citations, ranking_ids, train_ids, train_title, train_abstracts)
 
-            incorrect_rankings = list(filter(lambda x: x not in correct_rankings, ranking_ids))
+            incorrect_rankings = list(filter(lambda x: x not in true_citations, ranking_ids))
             print("incorrect papers")
-            print_top_three(incorrect_rankings, train_ids, train_title, train_abstracts)
+            print_top_three(incorrect_rankings, ranking_ids, train_ids, train_title, train_abstracts)
             print()
             """
 
@@ -169,10 +168,11 @@ def split_data(data, dev_start: float, test_start: float, is_test: bool):
             data[int(test_start * len(data)):] if is_test
             else data[int(dev_start * len(data)): int(test_start * len(data))])
 
-def print_top_three(rankings, train_ids, train_title, train_abstracts):
+def print_top_three(rankings, ranking_ids, train_ids, train_title, train_abstracts):
     for i in range(3):
         if i < len(rankings):
             paper_index = train_ids.index(rankings[i])
+            print(ranking_ids.index(rankings[i]) + 1)
             print(train_title[paper_index])
             print(train_abstracts[paper_index])
 
