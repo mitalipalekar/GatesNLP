@@ -21,13 +21,11 @@ from numpy.linalg import norm
 PAPERS: str = "dataset_final"
 
 
-def tf_idf_ranking():
+def tf_idf_ranking(titles, abstracts):
     vectorizer = TfidfVectorizer()
     text = []
-    with open(PAPERS, 'rb') as f:
-        for line in tqdm(f):
-            parsed_json = json.loads(line)
-            text.append(parsed_json['title'] + " " + parsed_json['paperAbstract'])
+    for paper in tqdm(zip(titles, abstracts)):
+        text.append(paper[0] + " " + paper[1])
 
     return vectorizer.fit_transform(text).toarray()
 
@@ -80,7 +78,7 @@ def main():
     f.write("test title, top-10 similar papers\n")
 
     # calculate our evaluation metric
-    tfidf_matrix = tf_idf_ranking()
+    tfidf_matrix = tf_idf_ranking(titles, abstracts)
     eval_score = []
     matching_citation_count = 0
     min_rank = float("inf")
@@ -89,14 +87,17 @@ def main():
         dev_tokens = set(get_tokens(tokenizer, eval_title[i] + " " + eval_row, lemmatize))
 
         # rank all the papers in the training set
-        for index, train_tokens in enumerate(train_token_rows):
+        for train_index, train_tokens in enumerate(train_token_rows):
             if is_jaccard:
                 score = jaccard_similarity(dev_tokens, train_tokens)
             else:
-                a = tfidf_matrix[i + len(train_token_rows)]
-                b = tfidf_matrix[index]
+                eval_index = i + len(train_token_rows)
+                if is_test:
+                    eval_index += len(ids) - int(0.9 * len(ids))
+                a = tfidf_matrix[eval_index]
+                b = tfidf_matrix[train_index]
                 score = dot(a, b)/(norm(a)*norm(b))
-            rankings.append((score, index))
+            rankings.append((score, train_index))
         rankings.sort(key=lambda x: x[0], reverse=True)
 
         # EVALUATION METRIC LOGIC
@@ -167,6 +168,7 @@ def split_data(data, dev_start: float, test_start: float, is_test: bool):
     return (data[:int(dev_start * len(data))],
             data[int(test_start * len(data)):] if is_test
             else data[int(dev_start * len(data)): int(test_start * len(data))])
+
 
 def print_top_three(rankings, ranking_ids, train_ids, train_title, train_abstracts):
     for i in range(3):
