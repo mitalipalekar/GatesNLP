@@ -19,7 +19,7 @@ from numpy.linalg import norm
 
 from allennlp.modules.token_embedders import PretrainedBertEmbedder
 
-PAPERS: str = "dataset_final"
+PAPERS: str = "/projects/instr/19sp/cse481n/GatesNLP/extended_dataset.txt"
 BERT: str = "/projects/instr/19sp/cse481n/GatesNLP/scibert_scivocab_uncased"
 
 def tf_idf_ranking(titles, abstracts):
