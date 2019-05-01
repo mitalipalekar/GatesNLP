@@ -17,9 +17,10 @@ from pprint import pprint
 from numpy import dot
 from numpy.linalg import norm
 
+from allennlp.modules.token_embedders import PretrainedBertEmbedder
 
 PAPERS: str = "dataset_final"
-
+BERT: str = "/projects/instr/19sp/cse481n/GatesNLP/scibert_scivocab_uncased"
 
 def tf_idf_ranking(titles, abstracts):
     vectorizer = TfidfVectorizer()
@@ -36,6 +37,7 @@ def main():
 
     is_test = len(sys.argv) > 1 and sys.argv[1] == "test"
     is_jaccard = len(sys.argv) > 2 and sys.argv[2] == "j"
+    is_bert = len(sys.argv) > 2 and sys.argv[2] == "b"
     lemmatize = len(sys.argv) > 3 and sys.argv[3] == "1"
 
     lines = []
@@ -79,17 +81,23 @@ def main():
 
     # calculate our evaluation metric
     tfidf_matrix = tf_idf_ranking(titles, abstracts)
+    bert_embedder = PretrainedBertEmbedder(BERT)
     eval_score = []
     matching_citation_count = 0
     min_rank = float("inf")
     for i, eval_row in tqdm(enumerate(eval_abstracts)):
         rankings = []
-        dev_tokens = set(get_tokens(tokenizer, eval_title[i] + " " + eval_row, lemmatize))
+        eval_text = eval_title[i] + " " + eval_row
+        dev_tokens = set(get_tokens(tokenizer, eval_text, lemmatize))
+        eval_embedding = bert_embedder(eval_text)
 
         # rank all the papers in the training set
         for train_index, train_tokens in enumerate(train_token_rows):
             if is_jaccard:
                 score = jaccard_similarity(dev_tokens, train_tokens)
+            elif is_bert:
+                train_embedding = bert_embedder(train_tokens)
+                score = dot(eval_embedding, train_embedding) / (norm(eval_embedding) * norm(train_embedding))
             else:
                 eval_index = i + len(train_token_rows)
                 if is_test:
