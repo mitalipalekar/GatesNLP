@@ -1,8 +1,8 @@
 name: GatesNLP
 channels:
   - ostrokach
-  - conda-forge
   - defaults
+  - conda-forge
 dependencies:
   - asn1crypto=0.24.0=py37_0
   - blas=1.0=mkl
@@ -66,6 +66,7 @@ dependencies:
   - pytz=2019.1=py_0
   - qt=5.9.7=h5867ecd_1
   - readline=7.0=h7b6447c_5
+  - regex=2018.07.11=py37h470a237_0
   - requests=2.21.0=py37_0
   - scikit-learn=0.20.3=py37hd81dba3_0
   - scipy=1.2.1=py37h7c811a0_0
@@ -90,82 +91,12 @@ dependencies:
   - xz=5.2.4=h14c3975_4
   - zlib=1.2.11=h7b6447c_3
   - pip:
-    - alabaster==0.7.12
-    - allennlp==0.8.3
-    - atomicwrites==1.3.0
-    - attrs==19.1.0
-    - aws-sam-translator==1.10.0
-    - aws-xray-sdk==2.4.2
-    - awscli==1.16.145
-    - babel==2.6.0
-    - boto==2.49.0
-    - boto3==1.9.135
-    - botocore==1.12.135
-    - cfn-lint==0.19.1
-    - click==7.0
-    - colorama==0.3.9
-    - conllu==0.11
-    - docker==3.7.2
-    - docker-pycreds==0.4.0
+    - boto3==1.9.140
+    - botocore==1.12.140
     - docutils==0.14
-    - ecdsa==0.13.2
-    - editdistance==0.5.3
-    - en-core-web-sm==2.0.0
-    - flaky==3.5.3
-    - flask==1.0.2
-    - flask-cors==3.0.7
-    - ftfy==5.5.1
-    - future==0.17.1
-    - gevent==1.4.0
-    - greenlet==0.4.15
-    - h5py==2.9.0
-    - imagesize==1.1.0
-    - itsdangerous==1.1.0
-    - jinja2==2.10.1
     - jmespath==0.9.4
-    - jsondiff==1.1.2
-    - jsonnet==0.12.1
-    - jsonpatch==1.23
-    - jsonpickle==1.1
-    - jsonpointer==2.0
-    - jsonschema==2.6.0
-    - markupsafe==1.1.1
-    - mock==2.0.0
-    - more-itertools==7.0.0
-    - moto==1.3.8
-    - nltk==3.4.1
-    - numpydoc==0.9.1
-    - overrides==1.9
-    - packaging==19.0
-    - parsimonious==0.8.1
-    - pbr==5.1.3
-    - pluggy==0.9.0
-    - protobuf==3.7.1
-    - py==1.8.0
-    - pyasn1==0.4.5
-    - pygments==2.3.1
-    - pytest==4.4.1
-    - python-jose==3.0.1
-    - pytorch-pretrained-bert==0.6.1
-    - pyyaml==3.13
-    - regex==2017.4.5
-    - responses==0.10.6
-    - rsa==3.4.2
+    - pytorch-pretrained-bert==0.6.2
     - s3transfer==0.2.0
-    - snowballstemmer==1.2.1
-    - sphinx==2.0.1
-    - sphinxcontrib-applehelp==1.0.1
-    - sphinxcontrib-devhelp==1.0.1
-    - sphinxcontrib-htmlhelp==1.0.2
-    - sphinxcontrib-jsmath==1.0.1
-    - sphinxcontrib-qthelp==1.0.2
-    - sphinxcontrib-serializinghtml==1.1.3
-    - sqlparse==0.3.0
-    - tensorboardx==1.6
-    - torch==1.0.1.post2
-    - unidecode==1.0.23
-    - wcwidth==0.1.7
-    - websocket-client==0.56.0
-    - werkzeug==0.15.2
-    - word2number==1.1
-    - xmltodict==0.12.0
+    - torch==1.1.0
+prefix: /homes/iws/swojit/miniconda3/envs/GatesNLP
+
