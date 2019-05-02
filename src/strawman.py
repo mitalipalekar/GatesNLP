@@ -105,7 +105,7 @@ def main():
         eval_text_field = TextField(eval_text_tokens, {"tokens": token_indexer})
         eval_text_field.index(vocab)
         eval_padding_length = eval_text_field.get_padding_lengths()
-        eval_embedding = bert_embedder(eval_text_field.as_tensor(eval_padding_length))
+        eval_embedding = bert_embedder(eval_text_field.as_tensor(eval_padding_length)["tokens"])
         
         # rank all the papers in the training set
         for train_index, train_tokens in enumerate(train_token_rows):
@@ -116,7 +116,7 @@ def main():
                 train_text_field = TextField(train_text_token, {"tokens": token_indexer})
                 train_text_field.index(vocab)
                 train_padding_length = train_text_field.get_padding_lengths()
-                train_embedding = bert_embedder(train_text_field.as_tensor(train_padding_length))
+                train_embedding = bert_embedder(train_text_field.as_tensor(train_padding_length)["tokens"])
                 score = dot(eval_embedding, train_embedding) / (norm(eval_embedding) * norm(train_embedding))
             else:
                 eval_index = i + len(train_token_rows)
