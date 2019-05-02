@@ -43,8 +43,8 @@ def main():
     tokenizer = English().Defaults.create_tokenizer(nlp)
     token_indexer = SingleIdTokenIndexer()
     allennlp_tokenizer = SpacyWordSplitter(language='en_core_web_sm')
-    vocab = Vocabulary
-    vocab.set_from_file("/projects/instr/19sp/cse481n/GatesNLP/scibert_scivocab_uncased/vocab.txt")
+    vocab = Vocabulary()
+    vocab.set_from_file(filename="/projects/instr/19sp/cse481n/GatesNLP/scibert_scivocab_uncased/vocab.txt", oov_token="[UNK]")
     
     is_test = len(sys.argv) > 1 and sys.argv[1] == "test"
     is_jaccard = len(sys.argv) > 2 and sys.argv[2] == "j"
