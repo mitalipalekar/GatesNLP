@@ -52,20 +52,20 @@ def main():
         for line in f:
             lines.append(json.loads(line))
 
-lines.sort(key=lambda x: x['year'])
+    lines.sort(key=lambda x: x['year'])
 
-ids = extract_keys(lines, 'id')
-abstracts = extract_keys(lines, 'paperAbstract')
-titles = extract_keys(lines, 'title')
-out_citations = extract_keys(lines, 'outCitations')
+    ids = extract_keys(lines, 'id')
+    abstracts = extract_keys(lines, 'paperAbstract')
+    titles = extract_keys(lines, 'title')
+    out_citations = extract_keys(lines, 'outCitations')
 
-train_ids, eval_ids = split_data(ids, 0.8, 0.9, is_test)
-train_abstracts, eval_abstracts = split_data(abstracts, 0.8, 0.9, is_test)
-train_title, eval_title = split_data(titles, 0.8, 0.9, is_test)
-train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
+    train_ids, eval_ids = split_data(ids, 0.8, 0.9, is_test)
+    train_abstracts, eval_abstracts = split_data(abstracts, 0.8, 0.9, is_test)
+    train_title, eval_title = split_data(titles, 0.8, 0.9, is_test)
+    train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
-# gets the tokens of the training set
-train_token_rows = [set(get_tokens(tokenizer, paper[0] + " " + paper[1], lemmatize)) for paper in zip(train_title, train_abstracts)]
+    # gets the tokens of the training set
+    train_token_rows = [set(get_tokens(tokenizer, paper[0] + " " + paper[1], lemmatize)) for paper in zip(train_title, train_abstracts)]
     train_text = [paper[0] + " " + paper[1] for paper in zip(train_title, train_abstracts)]
     
     total_count = 0
@@ -78,13 +78,13 @@ train_token_rows = [set(get_tokens(tokenizer, paper[0] + " " + paper[1], lemmati
     print("train size = " + str(len(train_ids)))
     print("dev size = " + str(len(eval_ids)))
 
-print("total count = " + str(total_count))
-print(eval_title[527])
-pprint(sorted(citation_counts.items(), key = lambda kv:(kv[1], kv[0])))
-print(set(split_data(extract_keys(lines, 'year'), 0.8, 0.9, is_test)[0]))
+    print("total count = " + str(total_count))
+    print(eval_title[527])
+    pprint(sorted(citation_counts.items(), key = lambda kv:(kv[1], kv[0])))
+    print(set(split_data(extract_keys(lines, 'year'), 0.8, 0.9, is_test)[0]))
 
-# get file to write titles too
-f = open("titles_similar_dataset_final.txt", "w", encoding="utf-8")
+    # get file to write titles too
+    f = open("titles_similar_dataset_final.txt", "w", encoding="utf-8")
     f.write("test title, top-10 similar papers\n")
     
     # calculate our evaluation metric
@@ -150,14 +150,14 @@ f = open("titles_similar_dataset_final.txt", "w", encoding="utf-8")
                 print()
                 """
 
-# PRINT TOP 10 TITLES PER TEST PAPER
-# paper_titles = get_relevant_papers(rankings[:10], train_title)
-# f.write(eval_title[i] + "\n " + ','.join(list(paper_titles)) + "\n\n")
-print("matching citation count = " + str(matching_citation_count))
-print(eval_score)
-print("min rank = " + str(min_rank))
-print(sum(eval_score) / matching_citation_count)
-f.close()
+    # PRINT TOP 10 TITLES PER TEST PAPER
+    # paper_titles = get_relevant_papers(rankings[:10], train_title)
+    # f.write(eval_title[i] + "\n " + ','.join(list(paper_titles)) + "\n\n")
+    print("matching citation count = " + str(matching_citation_count))
+    print(eval_score)
+    print("min rank = " + str(min_rank))
+    print(sum(eval_score) / matching_citation_count)
+    f.close()
 
 
 def extract_keys(lines, key: str):
