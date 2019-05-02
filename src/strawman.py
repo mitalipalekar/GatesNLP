@@ -16,50 +16,58 @@ from pprint import pprint
 
 from numpy import dot
 from numpy.linalg import norm
+from allennlp.data.fields import TextField
+from allennlp.data.token_indexers import SingleIdTokenIndexer
+from allennlp.data.tokenizers.word_splitter import SpacyWordSplitter
+
+
 
 from allennlp.modules.token_embedders import PretrainedBertEmbedder
 
 PAPERS: str = "/projects/instr/19sp/cse481n/GatesNLP/extended_dataset.txt"
-BERT: str = "/projects/instr/19sp/cse481n/GatesNLP/scibert_scivocab_uncased"
+BERT: str = "/projects/instr/19sp/cse481n/GatesNLP/scibert_scivocab_uncased/weights.tar.gz"
 
 def tf_idf_ranking(titles, abstracts):
     vectorizer = TfidfVectorizer()
     text = []
     for paper in tqdm(zip(titles, abstracts)):
         text.append(paper[0] + " " + paper[1])
-
+    
     return vectorizer.fit_transform(text).toarray()
 
 
 def main():
     nlp = spacy.load("en_core_web_sm")
     tokenizer = English().Defaults.create_tokenizer(nlp)
-
+    token_indexer = SingleIdTokenIndexer()
+    tokenizer = SpacyWordSplitter(language='en_core_web_sm')
+    
     is_test = len(sys.argv) > 1 and sys.argv[1] == "test"
     is_jaccard = len(sys.argv) > 2 and sys.argv[2] == "j"
     is_bert = len(sys.argv) > 2 and sys.argv[2] == "b"
     lemmatize = len(sys.argv) > 3 and sys.argv[3] == "1"
-
+    
     lines = []
     with open(PAPERS, 'rb') as f:
         for line in f:
             lines.append(json.loads(line))
 
-    lines.sort(key=lambda x: x['year'])
+lines.sort(key=lambda x: x['year'])
 
-    ids = extract_keys(lines, 'id')
-    abstracts = extract_keys(lines, 'paperAbstract')
-    titles = extract_keys(lines, 'title')
-    out_citations = extract_keys(lines, 'outCitations')
+ids = extract_keys(lines, 'id')
+abstracts = extract_keys(lines, 'paperAbstract')
+titles = extract_keys(lines, 'title')
+out_citations = extract_keys(lines, 'outCitations')
 
-    train_ids, eval_ids = split_data(ids, 0.8, 0.9, is_test)
-    train_abstracts, eval_abstracts = split_data(abstracts, 0.8, 0.9, is_test)
-    train_title, eval_title = split_data(titles, 0.8, 0.9, is_test)
-    train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
+train_ids, eval_ids = split_data(ids, 0.8, 0.9, is_test)
+train_abstracts, eval_abstracts = split_data(abstracts, 0.8, 0.9, is_test)
+train_title, eval_title = split_data(titles, 0.8, 0.9, is_test)
+train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
-    # gets the tokens of the training set
-    train_token_rows = [set(get_tokens(tokenizer, paper[0] + " " + paper[1], lemmatize)) for paper in zip(train_title, train_abstracts)]
-
+# gets the tokens of the training set
+train_token_rows = [set(get_tokens(tokenizer, paper[0] + " " + paper[1], lemmatize)) for paper in zip(train_title, train_abstracts)]
+    train_text = [paper[0] + " " + paper[1] for paper in zip(train_title, train_abstracts)]
+    
     total_count = 0
     citation_counts = dict()
     for i, citations in enumerate(eval_out_citations):
@@ -70,15 +78,15 @@ def main():
     print("train size = " + str(len(train_ids)))
     print("dev size = " + str(len(eval_ids)))
 
-    print("total count = " + str(total_count))
-    print(eval_title[527])
-    pprint(sorted(citation_counts.items(), key = lambda kv:(kv[1], kv[0])))
-    print(set(split_data(extract_keys(lines, 'year'), 0.8, 0.9, is_test)[0]))
+print("total count = " + str(total_count))
+print(eval_title[527])
+pprint(sorted(citation_counts.items(), key = lambda kv:(kv[1], kv[0])))
+print(set(split_data(extract_keys(lines, 'year'), 0.8, 0.9, is_test)[0]))
 
-    # get file to write titles too
-    f = open("titles_similar_dataset_final.txt", "w", encoding="utf-8")
+# get file to write titles too
+f = open("titles_similar_dataset_final.txt", "w", encoding="utf-8")
     f.write("test title, top-10 similar papers\n")
-
+    
     # calculate our evaluation metric
     tfidf_matrix = tf_idf_ranking(titles, abstracts)
     bert_embedder = PretrainedBertEmbedder(BERT)
@@ -89,14 +97,20 @@ def main():
         rankings = []
         eval_text = eval_title[i] + " " + eval_row
         dev_tokens = set(get_tokens(tokenizer, eval_text, lemmatize))
-        eval_embedding = bert_embedder(eval_text)
-
+        eval_text_tokens = tokenizer.split_words(eval_text)
+        eval_text_field = TextField(eval_text_tokens, token_indexer)
+        eval_padding_length = eval_text_field.get_padding_lengths()
+        eval_embedding = bert_embedder(eval_text_field.as_tensor(eval_padding_length))
+        
         # rank all the papers in the training set
         for train_index, train_tokens in enumerate(train_token_rows):
             if is_jaccard:
                 score = jaccard_similarity(dev_tokens, train_tokens)
             elif is_bert:
-                train_embedding = bert_embedder(train_tokens)
+                train_text_token = tokenizer.split_words(train_text[train_index])
+                train_text_field = TextField(train_text_token, token_indexer)
+                train_padding_length = train_text_field.get_padding_lengths()
+                train_embedding = bert_embedder(train_text_field.as_tensor(train_padding_length))
                 score = dot(eval_embedding, train_embedding) / (norm(eval_embedding) * norm(train_embedding))
             else:
                 eval_index = i + len(train_token_rows)
@@ -107,7 +121,7 @@ def main():
                 score = dot(a, b)/(norm(a)*norm(b))
             rankings.append((score, train_index))
         rankings.sort(key=lambda x: x[0], reverse=True)
-
+        
         # EVALUATION METRIC LOGIC
         # gets citations if there are any
         out_citations = eval_out_citations[i]
@@ -115,35 +129,35 @@ def main():
             # gets the rankings of the training papers in the correct order
             ranking_ids = get_ids(rankings, train_ids)
             true_citations = [citation for citation in ranking_ids if citation in out_citations]
-
+            
             if len(true_citations):
                 matching_citation_count += 1
                 rank = ranking_ids.index(true_citations[0]) + 1
                 min_rank = min(min_rank, rank)
                 eval_score.append(1.0 / rank)
-
+            
             """
-            print("PAPER " + str(i))
-            print(eval_title[i])
-            print(eval_abstracts[i])
+                print("PAPER " + str(i))
+                print(eval_title[i])
+                print(eval_abstracts[i])
+                
+                print("correct papers")
+                print_top_three(true_citations, ranking_ids, train_ids, train_title, train_abstracts)
+                
+                incorrect_rankings = list(filter(lambda x: x not in true_citations, ranking_ids))
+                print("incorrect papers")
+                print_top_three(incorrect_rankings, ranking_ids, train_ids, train_title, train_abstracts)
+                print()
+                """
 
-            print("correct papers")
-            print_top_three(true_citations, ranking_ids, train_ids, train_title, train_abstracts)
-
-            incorrect_rankings = list(filter(lambda x: x not in true_citations, ranking_ids))
-            print("incorrect papers")
-            print_top_three(incorrect_rankings, ranking_ids, train_ids, train_title, train_abstracts)
-            print()
-            """
-
-            # PRINT TOP 10 TITLES PER TEST PAPER
-            # paper_titles = get_relevant_papers(rankings[:10], train_title)
-            # f.write(eval_title[i] + "\n " + ','.join(list(paper_titles)) + "\n\n")
-    print("matching citation count = " + str(matching_citation_count))
-    print(eval_score)
-    print("min rank = " + str(min_rank))
-    print(sum(eval_score) / matching_citation_count)
-    f.close()
+# PRINT TOP 10 TITLES PER TEST PAPER
+# paper_titles = get_relevant_papers(rankings[:10], train_title)
+# f.write(eval_title[i] + "\n " + ','.join(list(paper_titles)) + "\n\n")
+print("matching citation count = " + str(matching_citation_count))
+print(eval_score)
+print("min rank = " + str(min_rank))
+print(sum(eval_score) / matching_citation_count)
+f.close()
 
 
 def extract_keys(lines, key: str):
