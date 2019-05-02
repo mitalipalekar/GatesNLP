@@ -16,9 +16,11 @@ from pprint import pprint
 
 from numpy import dot
 from numpy.linalg import norm
+
 from allennlp.data.fields import TextField
 from allennlp.data.token_indexers import SingleIdTokenIndexer
 from allennlp.data.tokenizers.word_splitter import SpacyWordSplitter
+from allennlp.data import Vocabulary
 
 
 
@@ -40,7 +42,9 @@ def main():
     nlp = spacy.load("en_core_web_sm")
     tokenizer = English().Defaults.create_tokenizer(nlp)
     token_indexer = SingleIdTokenIndexer()
-    tokenizer = SpacyWordSplitter(language='en_core_web_sm')
+    allennlp_tokenizer = SpacyWordSplitter(language='en_core_web_sm')
+    vocab = Vocabulary
+    vocab.set_from_file("/projects/instr/19sp/cse481n/GatesNLP/scibert_scivocab_uncased/vocab.txt")
     
     is_test = len(sys.argv) > 1 and sys.argv[1] == "test"
     is_jaccard = len(sys.argv) > 2 and sys.argv[2] == "j"
@@ -97,8 +101,9 @@ def main():
         rankings = []
         eval_text = eval_title[i] + " " + eval_row
         dev_tokens = set(get_tokens(tokenizer, eval_text, lemmatize))
-        eval_text_tokens = tokenizer.split_words(eval_text)
+        eval_text_tokens = allennlp_tokenizer.split_words(eval_text)
         eval_text_field = TextField(eval_text_tokens, token_indexer)
+        eval_text_field.index(vocab)
         eval_padding_length = eval_text_field.get_padding_lengths()
         eval_embedding = bert_embedder(eval_text_field.as_tensor(eval_padding_length))
         
@@ -107,8 +112,9 @@ def main():
             if is_jaccard:
                 score = jaccard_similarity(dev_tokens, train_tokens)
             elif is_bert:
-                train_text_token = tokenizer.split_words(train_text[train_index])
+                train_text_token = allennlp_tokenizer.split_words(train_text[train_index])
                 train_text_field = TextField(train_text_token, token_indexer)
+                train_text_field.index(vocab)
                 train_padding_length = train_text_field.get_padding_lengths()
                 train_embedding = bert_embedder(train_text_field.as_tensor(train_padding_length))
                 score = dot(eval_embedding, train_embedding) / (norm(eval_embedding) * norm(train_embedding))
