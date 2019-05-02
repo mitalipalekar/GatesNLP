@@ -102,7 +102,7 @@ def main():
         eval_text = eval_title[i] + " " + eval_row
         dev_tokens = set(get_tokens(tokenizer, eval_text, lemmatize))
         eval_text_tokens = allennlp_tokenizer.split_words(eval_text)
-        eval_text_field = TextField(eval_text_tokens, token_indexer)
+        eval_text_field = TextField(eval_text_tokens, {"tokens": token_indexer})
         eval_text_field.index(vocab)
         eval_padding_length = eval_text_field.get_padding_lengths()
         eval_embedding = bert_embedder(eval_text_field.as_tensor(eval_padding_length))
@@ -113,7 +113,7 @@ def main():
                 score = jaccard_similarity(dev_tokens, train_tokens)
             elif is_bert:
                 train_text_token = allennlp_tokenizer.split_words(train_text[train_index])
-                train_text_field = TextField(train_text_token, token_indexer)
+                train_text_field = TextField(train_text_token, {"tokens": token_indexer})
                 train_text_field.index(vocab)
                 train_padding_length = train_text_field.get_padding_lengths()
                 train_embedding = bert_embedder(train_text_field.as_tensor(train_padding_length))
