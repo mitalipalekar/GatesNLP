@@ -1,32 +1,81 @@
+import json
+import sys
 import torch
 from pytorch_pretrained_bert import BertTokenizer, BertModel
 
-# Load pre-trained model tokenizer (vocabulary)
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+def bert(abstract):
+    # Load pre-trained model tokenizer (vocabulary)
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
-# Tokenized input
-text = "[CLS] Who was Jim Henson ? [SEP] Jim Henson was a puppeteer [SEP]"
-tokenized_text = tokenizer.tokenize(text)
-print(tokenized_text)
+    # Tokenized input
+    tokenized_text = tokenizer.tokenize(abstract)
+    print(tokenized_text)
 
-# Convert token to vocabulary indices
-indexed_tokens = tokenizer.convert_tokens_to_ids(tokenized_text)
-# Convert inputs to PyTorch tensors
-tokens_tensor = torch.tensor([indexed_tokens])
+    # Convert token to vocabulary indices
+    indexed_tokens = tokenizer.convert_tokens_to_ids(tokenized_text)
+    # Convert inputs to PyTorch tensors
+    tokens_tensor = torch.tensor([indexed_tokens])
 
-print(tokens_tensor)
+    print(tokens_tensor)
 
-# Load pre-trained model (weights)
-model = BertModel.from_pretrained('bert-base-uncased')
-model.eval()
+    # Load pre-trained model (weights)
+    model = BertModel.from_pretrained('bert-base-uncased')
+    model.eval()
 
-# If you have a GPU, put everything on cuda
-tokens_tensor = tokens_tensor.to('cuda')
-model.to('cuda')
+    # If you have a GPU, put everything on cuda
+    tokens_tensor = tokens_tensor.to('cuda')
+    model.to('cuda')
 
-# Predict hidden states features for each layer
-with torch.no_grad():
-    encoded_layers, _ = model(tokens_tensor)
-# We have a hidden states for each of the 12 layers in model bert-base-uncased
-print(encoded_layers[11])
+    # Predict hidden states features for each layer
+    with torch.no_grad():
+        encoded_layers, _ = model(tokens_tensor)
+    # We have a hidden states for each of the 12 layers in model bert-base-uncased
+    print(encoded_layers[11])
+    return encoded_layers[11]
 
+
+def generate_word_embeddings(papers):
+    lines = []
+    with open(papers, 'rb') as f:
+        for line in f:
+            lines.append(json.loads(line))
+
+    lines.sort(key=lambda x: x['year'])
+
+    ids = extract_keys(lines, 'id')
+    abstracts = extract_keys(lines, 'paperAbstract')
+    titles = extract_keys(lines, 'title')
+    out_citations = extract_keys(lines, 'outCitations')
+
+    # TODO: DO NOT HARDCODE THIS
+    is_test = False
+
+    train_ids, eval_ids = split_data(ids, 0.8, 0.9, is_test)
+    train_abstracts, eval_abstracts = split_data(abstracts, 0.8, 0.9, is_test)
+    train_title, eval_title = split_data(titles, 0.8, 0.9, is_test)
+    train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
+
+    word_embeddings = []
+    for abstract in eval_abstracts:
+        word_embedding = bert(abstract)
+        word_embeddings.append(word_embedding)
+
+
+def split_data(data, dev_start: float, test_start: float, is_test: bool):
+    return (data[:int(dev_start * len(data))],
+            data[int(test_start * len(data)):] if is_test
+            else data[int(dev_start * len(data)): int(test_start * len(data))])
+
+
+def extract_keys(lines, key: str):
+    return [json[key] for json in lines]
+
+def main():
+    if len(sys.argv) < 1:
+        print('Please supply dataset as command line argument')
+        return
+    generate_word_embeddings(sys.argv[1])
+
+
+if __name__ == '__main__':
+    main()
