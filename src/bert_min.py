@@ -60,10 +60,13 @@ def generate_word_embeddings(papers):
     matching_citation_count = 0
     min_rank = float("inf")
     word_embeddings_train = []
+    print('--------- extracting embeddings for training set --------')
     for abstract in tqdm(train_abstracts):
         word_embedding = bert(abstract)
         word_embeddings_train.append(word_embedding)
+    print('--------- finished extracting embeddings for training set --------')
 
+    print('--------- extracting embeddings for evaluation set --------')
     for i, abstract in tqdm(enumerate(eval_abstracts)):
         word_embedding_eval = bert(abstract)
         rankings = []
