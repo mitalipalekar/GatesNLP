@@ -2,13 +2,16 @@ import json
 import sys
 import torch
 from pytorch_pretrained_bert import BertTokenizer, BertModel
+import pickle
 from numpy import dot
 from numpy.linalg import norm
 from tqdm import tqdm
 
+WORD_EMBEDDINGS_TRAIN = 'word_embeddings_train.pk'
+WORD_EMBEDDINGS_EVAL = 'word_embeddings_eval.pk'
 
 def bert(abstract):
-    print(len(abstract))
+    # print(len(abstract))
     # Load pre-trained model tokenizer (vocabulary)
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
@@ -33,7 +36,7 @@ def bert(abstract):
         encoded_layers, _ = model(tokens_tensor)
     # We have a hidden states for each of the 12 layers in model bert-base-uncased
     # print(encoded_layers[11])
-    print(encoded_layers[11].shape)
+    # print(encoded_layers[11].shape)
     return encoded_layers[11]
 
 
@@ -63,45 +66,52 @@ def generate_word_embeddings(papers):
     min_rank = float("inf")
     word_embeddings_train = []
     print('--------- extracting embeddings for training set --------')
-    i = 0
+    # i = 0
     for abstract in tqdm(train_abstracts):
         if abstract:
             word_embedding = bert(abstract)
             word_embeddings_train.append(word_embedding)
         i = i + 1
-        if i == 10:
-            break
+        # if i == 10:
+        #     break
+    with open(WORD_EMBEDDINGS_TRAIN, 'wb') as handle:
+        pickle.dump(word_embeddings_train, handle, protocol=pickle.HIGHEST_PROTOCOL)
     print('--------- finished extracting embeddings for training set --------')
 
     print('--------- extracting embeddings for evaluation set --------')
+    word_embeddings_eval = []
     for i, abstract in tqdm(enumerate(eval_abstracts)):
         word_embedding_eval = bert(abstract)
-        rankings = []
-        for train_index, word_embedding_train in enumerate(word_embeddings_train):
-            score = dot(word_embedding_eval, word_embedding_train) / (
-                    norm(word_embedding_eval) * norm(word_embedding_train))
-            rankings.append((score, train_index))
+        word_embeddings_eval.append(word_embedding_eval)
+        # rankings = []
+        # for train_index, word_embedding_train in enumerate(word_embeddings_train):
+        #     score = dot(word_embedding_eval, word_embedding_train) / (
+        #             norm(word_embedding_eval) * norm(word_embedding_train))
+        #     rankings.append((score, train_index))
+        #
+        # rankings.sort(key=lambda x: x[0], reverse=True)
+        #
+        # # TODO: now do MRR
+        # out_citations = eval_out_citations[i]
+        # if len(out_citations):
+        #     # gets the rankings of the training papers in the correct order
+        #     ranking_ids = get_ids(rankings, train_ids)
+        #     true_citations = [citation for citation in ranking_ids if citation in out_citations]
+        #
+        #     if len(true_citations):
+        #         matching_citation_count += 1
+        #         rank = ranking_ids.index(true_citations[0]) + 1
+        #         min_rank = min(min_rank, rank)
+        #         eval_score.append(1.0 / rank)
+        # break
+    with open(WORD_EMBEDDINGS_EVAL, 'wb') as handle:
+        pickle.dump(word_embeddings_eval, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    print('--------- finished extracting embeddings for evaluation set --------')
 
-        rankings.sort(key=lambda x: x[0], reverse=True)
-
-        # TODO: now do MRR
-        out_citations = eval_out_citations[i]
-        if len(out_citations):
-            # gets the rankings of the training papers in the correct order
-            ranking_ids = get_ids(rankings, train_ids)
-            true_citations = [citation for citation in ranking_ids if citation in out_citations]
-
-            if len(true_citations):
-                matching_citation_count += 1
-                rank = ranking_ids.index(true_citations[0]) + 1
-                min_rank = min(min_rank, rank)
-                eval_score.append(1.0 / rank)
-        break
-
-    print("matching citation count = " + str(matching_citation_count))
-    print(eval_score)
-    print("min rank = " + str(min_rank))
-    print(sum(eval_score) / matching_citation_count)
+    # print("matching citation count = " + str(matching_citation_count))
+    # print(eval_score)
+    # print("min rank = " + str(min_rank))
+    # print(sum(eval_score) / matching_citation_count)
 
 
 def split_data(data, dev_start: float, test_start: float, is_test: bool):
