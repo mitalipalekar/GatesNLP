@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 
 def bert(abstract):
+    print(len(abstract))
     # Load pre-trained model tokenizer (vocabulary)
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
@@ -24,14 +25,15 @@ def bert(abstract):
     model.eval()
 
     # If you have a GPU, put everything on cuda
-    tokens_tensor = tokens_tensor.to('cuda')
-    model.to('cuda')
+    # tokens_tensor = tokens_tensor.to('cuda')
+    # model.to('cuda')
 
     # Predict hidden states features for each layer
     with torch.no_grad():
         encoded_layers, _ = model(tokens_tensor)
     # We have a hidden states for each of the 12 layers in model bert-base-uncased
-    print(encoded_layers[11])
+    # print(encoded_layers[11])
+    print(encoded_layers[11].shape)
     return encoded_layers[11]
 
 
@@ -61,9 +63,14 @@ def generate_word_embeddings(papers):
     min_rank = float("inf")
     word_embeddings_train = []
     print('--------- extracting embeddings for training set --------')
+    i = 0
     for abstract in tqdm(train_abstracts):
-        word_embedding = bert(abstract)
-        word_embeddings_train.append(word_embedding)
+        if abstract:
+            word_embedding = bert(abstract)
+            word_embeddings_train.append(word_embedding)
+        i = i + 1
+        if i == 10:
+            break
     print('--------- finished extracting embeddings for training set --------')
 
     print('--------- extracting embeddings for evaluation set --------')
@@ -89,6 +96,7 @@ def generate_word_embeddings(papers):
                 rank = ranking_ids.index(true_citations[0]) + 1
                 min_rank = min(min_rank, rank)
                 eval_score.append(1.0 / rank)
+        break
 
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
