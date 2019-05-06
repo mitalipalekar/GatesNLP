@@ -1,14 +1,16 @@
 import json
+import pickle
 import sys
+
 import torch
 from pytorch_pretrained_bert import BertTokenizer, BertModel
-import pickle
-from numpy import dot
-from numpy.linalg import norm
 from tqdm import tqdm
+
+from src.gnlputils import extract_keys, split_data
 
 WORD_EMBEDDINGS_TRAIN = 'word_embeddings_train.pk'
 WORD_EMBEDDINGS_EVAL = 'word_embeddings_eval.pk'
+
 
 def bert(abstract):
     # print(len(abstract))
@@ -114,24 +116,7 @@ def generate_word_embeddings(papers):
     # print(sum(eval_score) / matching_citation_count)
 
 
-def split_data(data, dev_start: float, test_start: float, is_test: bool):
-    return (data[:int(dev_start * len(data))],
-            data[int(test_start * len(data)):] if is_test
-            else data[int(dev_start * len(data)): int(test_start * len(data))])
-
-
-def extract_keys(lines, key: str):
-    return [json[key] for json in lines]
-
-
-def get_ids(rankings, train_ids):
-    return [train_ids[index] for _, index in rankings]
-
-
 def main():
-    if len(sys.argv) < 1:
-        print('Please supply dataset as command line argument')
-        return
     generate_word_embeddings(sys.argv[1])
 
 

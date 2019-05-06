@@ -1,22 +1,15 @@
 #! /usr/bin/env python3
 
-import sys
 import json
+import sys
 from typing import Set
 
 import spacy
+from sklearn.feature_extraction.text import TfidfVectorizer
 from spacy.lang.en import English
 from tqdm import tqdm
-import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-from scipy import spatial
-import math
 
-from pprint import pprint
-
-from numpy import dot
-from numpy.linalg import norm
-
+from gnlputils import cosine_similarity, extract_keys, get_from_rankings, split_data
 
 PAPERS: str = "dataset_final"
 
@@ -56,7 +49,8 @@ def main():
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
     # gets the tokens of the training set
-    train_token_rows = [set(get_tokens(tokenizer, paper[0] + " " + paper[1], lemmatize)) for paper in zip(train_title, train_abstracts)]
+    train_token_rows = [set(get_tokens(tokenizer, paper[0] + " " + paper[1], lemmatize)) for paper in
+                        zip(train_title, train_abstracts)]
 
     total_count = 0
     citation_counts = dict()
@@ -64,14 +58,6 @@ def main():
         count = len(set(train_ids) & set(citations))
         total_count += count
         citation_counts[i] = count
-
-    print("train size = " + str(len(train_ids)))
-    print("dev size = " + str(len(eval_ids)))
-
-    print("total count = " + str(total_count))
-    print(eval_title[527])
-    pprint(sorted(citation_counts.items(), key = lambda kv:(kv[1], kv[0])))
-    print(set(split_data(extract_keys(lines, 'year'), 0.8, 0.9, is_test)[0]))
 
     # get file to write titles too
     f = open("titles_similar_dataset_final.txt", "w", encoding="utf-8")
@@ -96,7 +82,7 @@ def main():
                     eval_index += len(ids) - int(0.9 * len(ids))
                 a = tfidf_matrix[eval_index]
                 b = tfidf_matrix[train_index]
-                score = dot(a, b)/(norm(a)*norm(b))
+                score = cosine_similarity(a, b)
             rankings.append((score, train_index))
         rankings.sort(key=lambda x: x[0], reverse=True)
 
@@ -105,7 +91,7 @@ def main():
         out_citations = eval_out_citations[i]
         if len(out_citations):
             # gets the rankings of the training papers in the correct order
-            ranking_ids = get_ids(rankings, train_ids)
+            ranking_ids = get_from_rankings(rankings, train_ids)
             true_citations = [citation for citation in ranking_ids if citation in out_citations]
 
             if len(true_citations):
@@ -138,10 +124,6 @@ def main():
     f.close()
 
 
-def extract_keys(lines, key: str):
-    return [json[key] for json in lines]
-
-
 def jaccard_similarity(a, b):
     if not a and not b:
         return 0
@@ -154,20 +136,6 @@ def get_tokens(tokenizer, paper: str, lemmatize: bool) -> Set[str]:
         tokens = tokenizer(paper.lower())
         return {token.lemma_ for token in tokens if token.is_alpha and not token.is_stop}
     return paper.split()
-
-
-def get_relevant_papers(rankings, train_title):
-    return [train_title[index] for _, index in rankings]
-
-
-def get_ids(rankings, train_ids):
-    return [train_ids[index] for _, index in rankings]
-
-
-def split_data(data, dev_start: float, test_start: float, is_test: bool):
-    return (data[:int(dev_start * len(data))],
-            data[int(test_start * len(data)):] if is_test
-            else data[int(dev_start * len(data)): int(test_start * len(data))])
 
 
 def print_top_three(rankings, ranking_ids, train_ids, train_title, train_abstracts):
