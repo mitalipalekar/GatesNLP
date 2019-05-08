@@ -11,13 +11,13 @@ from tqdm import tqdm
 
 from gnlputils import cosine_similarity, extract_keys, get_from_rankings, split_data
 
-PAPERS: str = "dataset_final"
+PAPERS: str = "../dataset/dataset_small.txt"
 
 
 def tf_idf_ranking(titles, abstracts):
     vectorizer = TfidfVectorizer()
     text = []
-    for paper in tqdm(zip(titles, abstracts)):
+    for paper in tqdm(zip(titles, abstracts), desc="Generating TF-IDF matrix"):
         text.append(paper[0] + " " + paper[1])
 
     return vectorizer.fit_transform(text).toarray()
@@ -68,7 +68,7 @@ def main():
     eval_score = []
     matching_citation_count = 0
     min_rank = float("inf")
-    for i, eval_row in tqdm(enumerate(eval_abstracts)):
+    for i, eval_row in tqdm(enumerate(eval_abstracts), desc="Evaluating dev/test set abstracts"):
         rankings = []
         dev_tokens = set(get_tokens(tokenizer, eval_title[i] + " " + eval_row, lemmatize))
 

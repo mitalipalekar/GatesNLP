@@ -6,7 +6,7 @@ from tqdm import tqdm, trange
 
 from gnlputils import extract_keys, split_data
 
-PAPERS_PATH = 'extended_dataset.txt'
+PAPERS_PATH = 'extended_large.txt'
 WORD_EMBEDDINGS_EVAL = 'doc2vec_eval.pk'
 WORD_EMBEDDINGS_TRAIN = 'doc2vec_train.pk'
 

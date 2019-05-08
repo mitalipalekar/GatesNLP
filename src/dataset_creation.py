@@ -7,7 +7,7 @@ import json
 from tqdm import tqdm
 
 BASE_URL = 'https://s3-us-west-2.amazonaws.com/ai2-s2-research-public/open-corpus/'
-OUTPUT = 'extended_dataset.txt'
+OUTPUT = 'extended_large.txt'
 VENUES = ['ACL', 'NAACL', 'EMNLP', 'ACM Conference on Computer and Communications Security',
           'IEEE Symposium on Security and Privacy',
           'IEEE International Conference on Information Theory and Information Security',
