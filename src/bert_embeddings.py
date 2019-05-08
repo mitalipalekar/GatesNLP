@@ -13,7 +13,6 @@ WORD_EMBEDDINGS_EVAL = 'word_embeddings_eval.pk'
 
 
 def bert(abstract):
-    # print(len(abstract))
     # Load pre-trained model tokenizer (vocabulary)
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
@@ -21,6 +20,7 @@ def bert(abstract):
     tokenized_text = tokenizer.tokenize(abstract)
     if len(tokenized_text) > 512:
         tokenized_text = tokenized_text[:512]
+    # TODO - for debugging purposes, pls delete later
     print(len(tokenized_text))
 
     # Convert token to vocabulary indices
@@ -39,9 +39,9 @@ def bert(abstract):
     # Predict hidden states features for each layer
     with torch.no_grad():
         encoded_layers, _ = model(tokens_tensor)
-    # We have a hidden states for each of the 12 layers in model bert-base-uncased
+    # TODO - for debugging purposes only, pls delete later
     print(encoded_layers[11].shape)
-    # print(encoded_layers[11].shape)
+    # We have a hidden states for each of the 12 layers in model bert-base-uncased
     return encoded_layers[11]
 
 
@@ -75,6 +75,7 @@ def generate_word_embeddings(papers):
         if abstract:
             word_embedding = bert(abstract)
             word_embeddings_train.append(word_embedding)
+        # TODO - for debugging purposes only, pls delete later
         i = i + 1
         if i == 10:
             break
@@ -105,7 +106,8 @@ def generate_word_embeddings(papers):
         #         rank = ranking_ids.index(true_citations[0]) + 1
         #         min_rank = min(min_rank, rank)
         #         eval_score.append(1.0 / rank)
-        # break
+        # TODO - for debugging purposes only, pls delete later
+        break
     with open(WORD_EMBEDDINGS_EVAL, 'wb') as handle:
         pickle.dump(word_embeddings_eval, handle, protocol=pickle.HIGHEST_PROTOCOL)
     print('--------- finished extracting embeddings for evaluation set --------')
