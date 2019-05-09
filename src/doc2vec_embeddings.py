@@ -44,9 +44,9 @@ def generate_word_embeddings(papers):
     eval_score = []
     matching_citation_count = 1
     min_rank = float("inf")
-    for i, eval_abstract in tqdm(enumerate(eval_abstracts), desc='generating rankings for evaluation set'):
+    for i, eval_abstract in tqdm(enumerate(eval_abstracts[:1]), desc='generating rankings for evaluation set'):
         rankings = []
-        for j, train_abstract in enumerate(train_abstracts[:10]):
+        for j, train_abstract in tqdm(enumerate(train_abstracts), desc='iterating through train abstracts'):
             if len(eval_abstract.split()) and len(train_abstract.split()):
                 document_similarity = model.n_similarity(unk_abstract(train_abstract.split(), dictionary),
                                                          unk_abstract(eval_abstract.split(), dictionary))
@@ -57,14 +57,18 @@ def generate_word_embeddings(papers):
         if len(out_citations):
             # gets the rankings of the training papers in the correct order
             ranking_ids = get_from_rankings(rankings, train_ids)
+            print('----------------------- RANKING IDS ---------------------------')
+            print(ranking_ids)
+            print('----------------------- OUT CITATIONS ---------------------------')
+            print(out_citations)
             true_citations = [citation for citation in ranking_ids if citation in out_citations]
-
+            print(true_citations)
             if len(true_citations):
                 matching_citation_count += 1
                 rank = ranking_ids.index(true_citations[0]) + 1
                 min_rank = min(min_rank, rank)
                 eval_score.append(1.0 / rank)
-        break
+        # break
 
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
