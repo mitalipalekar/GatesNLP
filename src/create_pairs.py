@@ -37,8 +37,8 @@ def main():
                     if paper3 in text.keys() and paper3 not in seen and paper3 not in outCitations[paper1]:
                         seen.add(paper3)
                         one_hop_count += 1
-    true_citation_count = 20000
-    one_hop_count = 20000
+    true_citation_count = 10000
+    one_hop_count = 10000
 
     # cited pairs
     processed = 0
@@ -55,7 +55,7 @@ def main():
                 result = {}
                 result["query_paper"] = text1
                 result["candidate_paper"] = text[paper2]
-                result["label"] = "1"
+                result["relevance"] = "1"
                 out.write(json.dumps(result) + '\n')
 
     processed = 0

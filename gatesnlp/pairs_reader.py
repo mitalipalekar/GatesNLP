@@ -34,9 +34,9 @@ class PairsDatasetReader(DatasetReader):
 
                 query_paper = line_json["query_paper"]
                 candidate_paper = line_json["candidate_paper"]
-                label = line_json["label"]
+                relevance = line_json["relevance"]
 
-                instance = self.text_to_instance(query_paper=query_paper, candidate_paper=candidate_paper, label=label)
+                instance = self.text_to_instance(query_paper=query_paper, candidate_paper=candidate_paper, relevance=relevance)
                 if instance is not None:
                     yield instance
 
@@ -49,7 +49,7 @@ class PairsDatasetReader(DatasetReader):
         return tokens
 
     @overrides
-    def text_to_instance(self, query_paper: str, candidate_paper: str, label: str = None) -> Instance:  # type: ignore
+    def text_to_instance(self, query_paper: str, candidate_paper: str, relevance: str = None) -> Instance:  # type: ignore
         # pylint: disable=arguments-differ
         fields: Dict[str, Field] = {}
 
@@ -63,10 +63,10 @@ class PairsDatasetReader(DatasetReader):
             candidate_tokens = self._truncate(candidate_tokens)
         fields['candidate_paper'] = TextField(candidate_tokens, self._token_indexers)
 
-        fields['label'] = LabelField(label)
+        fields['label'] = LabelField(relevance)
 
         fields["metadata"] = MetadataField({"query_paper": query_paper,
                                             "candidate_paper": candidate_paper,
-                                            "label": label})
+                                            'label': relevance})
 
         return Instance(fields)

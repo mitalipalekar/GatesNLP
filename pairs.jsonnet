@@ -37,7 +37,7 @@
     },
     "iterator": {
         "type": "basic",
-        "batch_size": 128
+        "batch_size": 16
     },
     "trainer": {
         "optimizer": "adam",
