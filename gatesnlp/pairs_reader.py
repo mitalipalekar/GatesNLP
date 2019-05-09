@@ -28,15 +28,15 @@ class PairsDatasetReader(DatasetReader):
     def _read(self, file_path):
         with open(cached_path(file_path), "r") as data_file:
             for line in data_file.readlines():
-                if not line:
+                line_json = json.loads(line)
+                if not line_json:
                     continue
-                tokens = line.split('\t')
 
-                query_paper = tokens[0].encode("utf-8").decode("unicode_escape")
-                candidate_paper = tokens[1].encode("utf-8").decode("unicode_escape")
-                relevance = tokens[2]
+                query_paper = line_json["query_paper"]
+                candidate_paper = line_json["candidate_paper"]
+                label = line_json["label"]
 
-                instance = self.text_to_instance(query_paper=query_paper, candidate_paper=candidate_paper, relevance=relevance)
+                instance = self.text_to_instance(query_paper=query_paper, candidate_paper=candidate_paper, label=label)
                 if instance is not None:
                     yield instance
 
@@ -49,7 +49,7 @@ class PairsDatasetReader(DatasetReader):
         return tokens
 
     @overrides
-    def text_to_instance(self, query_paper: str, candidate_paper: str, relevance: str = None) -> Instance:  # type: ignore
+    def text_to_instance(self, query_paper: str, candidate_paper: str, label: str = None) -> Instance:  # type: ignore
         # pylint: disable=arguments-differ
         fields: Dict[str, Field] = {}
 
@@ -63,10 +63,10 @@ class PairsDatasetReader(DatasetReader):
             candidate_tokens = self._truncate(candidate_tokens)
         fields['candidate_paper'] = TextField(candidate_tokens, self._token_indexers)
 
-        fields['label'] = LabelField(relevance)
+        fields['label'] = LabelField(label)
 
         fields["metadata"] = MetadataField({"query_paper": query_paper,
                                             "candidate_paper": candidate_paper,
-                                            "label": relevance})
+                                            "label": label})
 
         return Instance(fields)

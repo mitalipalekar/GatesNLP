@@ -16,16 +16,14 @@
               "token_embedders": {
                 "tokens": {
                   "type": "embedding",
-                  "pretrained_file": "/cse/web/courses/cse447/19wi/assignments/resources/word2vec/GoogleNews-vectors-negative300.txt.gz",
-                  "embedding_dim": 300,
-                  "trainable": false
+                  "embedding_dim": 100
                 }
               }
             },
             "encoder": {
               "type": "rnn",
               "bidirectional": false,
-              "input_size": 300,
+              "input_size": 100,
               "hidden_size": 200,
               "num_layers": 1
             },
@@ -44,9 +42,9 @@
     "trainer": {
         "optimizer": "adam",
         "num_serialized_models_to_keep": 2,
-        "num_epochs": 15,
+        "num_epochs": 40,
         "patience": 10,
-        "cuda_device": -1,
+        "cuda_device": 0,
         "validation_metric": "+accuracy"
     }
 

@@ -37,12 +37,14 @@ def main():
                     if paper3 in text.keys() and paper3 not in seen and paper3 not in outCitations[paper1]:
                         seen.add(paper3)
                         one_hop_count += 1
+    true_citation_count = 20000
+    one_hop_count = 20000
 
     # cited pairs
     processed = 0
     for paper1, text1 in tqdm(text.items()):
         for paper2 in outCitations[paper1]:
-            if paper2 in text.keys():
+            if paper2 in text.keys() and processed < true_citation_count:
                 if processed < int(0.8 * true_citation_count):
                     out = train
                 elif processed >= int(0.8 * true_citation_count) and processed < int(0.9 * true_citation_count):
@@ -50,8 +52,11 @@ def main():
                 else:
                     out = test
                 processed += 1
-                result = (text1.encode("unicode_escape").decode("utf-8") + "\t" + text[paper2].encode("unicode_escape").decode("utf-8") + "\t1") + "\n"
-                out.write(result)
+                result = {}
+                result["query_paper"] = text1
+                result["candidate_paper"] = text[paper2]
+                result["label"] = "1"
+                out.write(json.dumps(result) + '\n')
 
     processed = 0
 
@@ -61,7 +66,7 @@ def main():
         for paper2 in outCitations[paper1]:
             if paper2 in text.keys():
                 for paper3 in outCitations[paper2]:
-                    if paper3 in text.keys() and paper3 not in seen and paper3 not in outCitations[paper1]:
+                    if paper3 in text.keys() and paper3 not in seen and paper3 not in outCitations[paper1] and processed < one_hop_count:
                         if processed < int(0.8 * one_hop_count):
                             out = train
                         elif processed >= int(0.8 * one_hop_count) and processed < int(0.9 * one_hop_count):
@@ -70,8 +75,11 @@ def main():
                             out = test
                         seen.add(paper3)
                         processed += 1
-                        result = (text1.encode("unicode_escape").decode("utf-8") + "\t" + text[paper3].encode("unicode_escape").decode("utf-8") + "\t0") + "\n"
-                        out.write(result)
+                        result = {}
+                        result["query_paper"] = text1
+                        result["candidate_paper"] = text[paper3]
+                        result["relevance"] = "0"
+                        out.write(json.dumps(result) + '\n')
 
 
 if __name__ == '__main__':

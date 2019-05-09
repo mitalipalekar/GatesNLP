@@ -1,7 +1,7 @@
 # mainly based on this example:
 # https://github.com/allenai/allennlp-as-a-library-example/blob/master/my_library/models/academic_paper_classifier.py
 
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Any
 
 import numpy
 from overrides import overrides
@@ -68,7 +68,8 @@ class RelevanceModel(Model):
     def forward(self,  # type: ignore
                 query_paper: Dict[str, torch.LongTensor],
                 candidate_paper: Dict[str, torch.LongTensor],
-                label: torch.LongTensor = None) -> Dict[str, torch.Tensor]:
+                label: torch.LongTensor = None,
+                metadata: List[Dict[str, Any]] = None) -> Dict[str, torch.Tensor]:
         # pylint: disable=arguments-differ
         """
         Parameters
@@ -102,6 +103,10 @@ class RelevanceModel(Model):
             for metric in self.metrics.values():
                 metric(logits, label)
             output_dict["loss"] = loss
+
+        if metadata is not None:
+            output_dict["query_paper"] = [x["query_paper"] for x in metadata]
+            output_dict["candidate_paper"] = [x["candidate_paper"] for x in metadata]
 
         return output_dict
 
