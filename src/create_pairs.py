@@ -3,27 +3,57 @@ import json
 from tqdm import tqdm
 
 PAPERS = '/projects/instr/19sp/cse481n/GatesNLP/extended_dataset.txt'
-OUTPUT = '/projects/instr/19sp/cse481n/GatesNLP/pairs.txt'
-
+TRAIN = '/projects/instr/19sp/cse481n/GatesNLP/pairs_train.txt'
+DEV = '/projects/instr/19sp/cse481n/GatesNLP/pairs_dev.txt'
+TEST = '/projects/instr/19sp/cse481n/GatesNLP/pairs_test.txt'
 
 def main():
     f = open(PAPERS, 'r')
-    out = open(OUTPUT, 'w')
+    train = open(TRAIN, 'w')
+    dev = open(DEV, 'w')
+    test = open(TEST, 'w')
 
     text = dict()
     outCitations = dict()
+
     for line in f:
         paper = json.loads(line)
         id = paper['id']
         text[id] = paper['title'] + ' ' + paper['paperAbstract']
         outCitations[id] = paper['outCitations']
 
-    # cited pairs
+    # counts numbers for train/dev/test split
+    true_citation_count = 0
+    one_hop_count = 0
     for paper1, text1 in tqdm(text.items()):
         for paper2 in outCitations[paper1]:
             if paper2 in text.keys():
-                result = (text[paper2] + "\t" + text1 + "\t1").encode("unicode_escape").decode("utf-8") + "\n"
+                true_citation_count += 1
+    for paper1, text1 in tqdm(text.items()):
+        seen = set()
+        for paper2 in outCitations[paper1]:
+            if paper2 in text.keys():
+                for paper3 in outCitations[paper2]:
+                    if paper3 in text.keys() and paper3 not in seen and paper3 not in outCitations[paper1]:
+                        seen.add(paper3)
+                        one_hop_count += 1
+
+    # cited pairs
+    processed = 0
+    for paper1, text1 in tqdm(text.items()):
+        for paper2 in outCitations[paper1]:
+            if paper2 in text.keys():
+                if processed < int(0.8 * true_citation_count):
+                    out = train
+                elif processed >= int(0.8 * true_citation_count) and processed < int(0.9 * true_citation_count):
+                    out = dev
+                else:
+                    out = test
+                processed += 1
+                result = (text1.encode("unicode_escape").decode("utf-8") + "\t" + text[paper2].encode("unicode_escape").decode("utf-8") + "\t1") + "\n"
                 out.write(result)
+
+    processed = 0
 
     # one-hop pairs
     for paper1, text1 in tqdm(text.items()):
@@ -32,8 +62,15 @@ def main():
             if paper2 in text.keys():
                 for paper3 in outCitations[paper2]:
                     if paper3 in text.keys() and paper3 not in seen and paper3 not in outCitations[paper1]:
+                        if processed < int(0.8 * one_hop_count):
+                            out = train
+                        elif processed >= int(0.8 * one_hop_count) and processed < int(0.9 * one_hop_count):
+                            out = dev
+                        else:
+                            out = test
                         seen.add(paper3)
-                        result = (text[paper3] + "\t" + text1 + "\t0").encode("unicode_escape").decode("utf-8") + "\n"
+                        processed += 1
+                        result = (text1.encode("unicode_escape").decode("utf-8") + "\t" + text[paper3].encode("unicode_escape").decode("utf-8") + "\t0") + "\n"
                         out.write(result)
 
 
