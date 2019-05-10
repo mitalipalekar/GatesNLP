@@ -100,7 +100,7 @@ def main():
             paper2 = random.choice(ids)
             if processed >= negative_examples:
                 break
-            if paper2 not in outCitations[paper1]:
+            if paper2 not in outCitations[paper1] and not paper1 == paper2:
                 if processed < int(0.8 * negative_examples):
                     out = train
                 elif processed >= int(0.8 * negative_examples) and processed < int(0.9 * negative_examples):

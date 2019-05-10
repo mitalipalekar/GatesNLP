@@ -119,7 +119,7 @@ class RelevanceModel(Model):
         class_probabilities = F.softmax(output_dict['logits'], dim=-1)
         output_dict['class_probabilities'] = class_probabilities
 
-        predictions = class_probabilities.data.numpy()
+        predictions = class_probabilities.cpu().data.numpy()
         argmax_indices = numpy.argmax(predictions, axis=-1)
         labels = [self.vocab.get_token_from_index(x, namespace="labels")
                   for x in argmax_indices]
