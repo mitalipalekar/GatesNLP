@@ -16,19 +16,19 @@
               "token_embedders": {
                 "tokens": {
                   "type": "embedding",
-                  "embedding_dim": 100
+                  "embedding_dim": 40
                 }
               }
             },
             "encoder": {
               "type": "rnn",
               "bidirectional": false,
-              "input_size": 100,
-              "hidden_size": 200,
+              "input_size": 40,
+              "hidden_size": 80,
               "num_layers": 1
             },
             "classifier_feedforward": {
-              "input_dim": 200,
+              "input_dim": 80,
               "num_layers": 1,
               "hidden_dims": [2],
               "activations": ["linear"],
@@ -37,15 +37,14 @@
     },
     "iterator": {
         "type": "basic",
-        "batch_size": 16
+        "batch_size": 64
     },
     "trainer": {
         "optimizer": "adam",
         "num_serialized_models_to_keep": 2,
         "num_epochs": 40,
         "patience": 10,
-        "cuda_device": 0,
-        "validation_metric": "+accuracy"
+        "cuda_device": 1
     }
 
 }

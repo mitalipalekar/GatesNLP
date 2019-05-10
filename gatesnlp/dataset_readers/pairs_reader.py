@@ -63,7 +63,8 @@ class PairsDatasetReader(DatasetReader):
             candidate_tokens = self._truncate(candidate_tokens)
         fields['candidate_paper'] = TextField(candidate_tokens, self._token_indexers)
 
-        fields['label'] = LabelField(relevance)
+        if relevance is not None:
+            fields['label'] = LabelField(relevance)
 
         fields["metadata"] = MetadataField({"query_paper": query_paper,
                                             "candidate_paper": candidate_paper,

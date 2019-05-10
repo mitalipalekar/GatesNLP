@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 import json
 from tqdm import tqdm
+import random
 
 PAPERS = '/projects/instr/19sp/cse481n/GatesNLP/extended_dataset.txt'
 TRAIN = '/projects/instr/19sp/cse481n/GatesNLP/pairs_train.txt'
@@ -21,6 +22,8 @@ def main():
         id = paper['id']
         text[id] = paper['title'] + ' ' + paper['paperAbstract']
         outCitations[id] = paper['outCitations']
+        if id == "78a4d1f70807f8a8b11a82636e8132c655d991cb" or id == "f80c1a392e20a35633a15d718a24ea6f54d2c58a":
+            print(text[id])
 
     # counts numbers for train/dev/test split
     true_citation_count = 0
@@ -39,11 +42,15 @@ def main():
                         one_hop_count += 1
     true_citation_count = 10000
     one_hop_count = 10000
+    negative_examples = 10000
 
     # cited pairs
     processed = 0
+    first_paper = ""
     for paper1, text1 in tqdm(text.items()):
         for paper2 in outCitations[paper1]:
+            if processed == 15:
+                first_paper = paper1
             if paper2 in text.keys() and processed < true_citation_count:
                 if processed < int(0.8 * true_citation_count):
                     out = train
@@ -56,6 +63,8 @@ def main():
                 result["query_paper"] = text1
                 result["candidate_paper"] = text[paper2]
                 result["relevance"] = "1"
+                if paper1 == first_paper:
+                    print(result)
                 out.write(json.dumps(result) + '\n')
 
     processed = 0
@@ -79,7 +88,34 @@ def main():
                         result["query_paper"] = text1
                         result["candidate_paper"] = text[paper3]
                         result["relevance"] = "0"
+                        if paper1 == first_paper:
+                            print(result)
                         out.write(json.dumps(result) + '\n')
+
+    processed = 0
+    ids = list(text.keys())
+    for paper1, text1 in tqdm(text.items()):
+        count = 0
+        while count < 5:
+            paper2 = random.choice(ids)
+            if processed >= negative_examples:
+                break
+            if paper2 not in outCitations[paper1]:
+                if processed < int(0.8 * negative_examples):
+                    out = train
+                elif processed >= int(0.8 * negative_examples) and processed < int(0.9 * negative_examples):
+                    out = dev
+                else:
+                    out = test
+                processed += 1
+                count += 1
+                result = {}
+                result["query_paper"] = text1
+                result["candidate_paper"] = text[paper2]
+                result["relevance"] = "1"
+                if paper1 == first_paper:
+                    print(result)
+                out.write(json.dumps(result) + '\n')
 
 
 if __name__ == '__main__':
