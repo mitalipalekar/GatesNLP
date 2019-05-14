@@ -1,4 +1,5 @@
 import json
+import os
 import pickle
 import sys
 
@@ -37,8 +38,10 @@ def bert(abstract):
     model.eval()
 
     # If you have a GPU, put everything on cuda
-    tokens_tensor = tokens_tensor.to('cuda')
-    model.to('cuda')
+    if torch.cuda.is_available():
+        with torch.cuda.device(0):
+            tokens_tensor = tokens_tensor.cuda()
+            model = model.cuda()
 
     # Predict hidden states features for each layer
     with torch.no_grad():
@@ -71,41 +74,49 @@ def generate_word_embeddings(papers):
     eval_score = []
     matching_citation_count = 1
     min_rank = float("inf")
-    word_embeddings_train = []
-    for abstract in tqdm(train_abstracts, desc='extracting embeddings for training set'):
-        if abstract:
-            word_embedding = take_mean_bert(bert(abstract))
-            word_embeddings_train.append(word_embedding)
-    with open(WORD_EMBEDDINGS_TRAIN, 'wb') as handle:
-        pickle.dump(word_embeddings_train, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    word_embeddings_eval = []
-    for i, abstract in tqdm(enumerate(eval_abstracts), desc='extracting embeddings for evaluation set'):
-        word_embedding_eval = take_mean_bert(bert(abstract))
-        word_embeddings_eval.append(word_embedding_eval)
-        rankings = []
-        for train_index, word_embedding_train in enumerate(word_embeddings_train):
-            score = cosine_similarity(word_embedding_eval.cpu(), word_embedding_train.cpu())
-            rankings.append((score, train_index))
-        rankings.sort(key=lambda x: x[0], reverse=True)
+    if not os.path.isfile(WORD_EMBEDDINGS_TRAIN):
+        with open(WORD_EMBEDDINGS_TRAIN, 'wb') as handle:
+            for abstract in tqdm(train_abstracts, desc='Extracting embeddings for training set'):
+                if abstract:
+                    word_embedding = take_mean_bert(bert(abstract))
+                    pickle.dump(word_embedding, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-        out_citations = eval_out_citations[i]
-        if len(out_citations):
-            # gets the rankings of the training papers in the correct order
-            ranking_ids = get_from_rankings(rankings, train_ids)
-            true_citations = [citation for citation in ranking_ids if citation in out_citations]
+    with open(WORD_EMBEDDINGS_TRAIN, 'rb') as handle:
+        print('Total number of outer loop iterations: {0}'.format(str(len(eval_abstracts))))
+        for i, abstract in tqdm(enumerate(eval_abstracts), desc='Extracting embeddings for evaluation set'):
+            if abstract:
+                word_embedding_eval = take_mean_bert(bert(abstract))
+                if not os.path.isfile(WORD_EMBEDDINGS_EVAL):
+                    with open(WORD_EMBEDDINGS_EVAL, 'wb') as f:
+                        pickle.dump(word_embedding_eval, f, protocol=pickle.HIGHEST_PROTOCOL)
+                rankings = []
+                try:
+                    train_index = 0
+                    while True:
+                        word_embedding_train = pickle.load(handle)
+                        score = cosine_similarity(word_embedding_eval.cpu(), word_embedding_train.cpu())
+                        rankings.append((score, train_index))
+                        train_index += 1
+                except EOFError:
+                    handle.seek(0)
+                rankings.sort(key=lambda x: x[0], reverse=True)
 
-            if len(true_citations):
-                matching_citation_count += 1
-                rank = ranking_ids.index(true_citations[0]) + 1
-                min_rank = min(min_rank, rank)
-                eval_score.append(1.0 / rank)
-    with open(WORD_EMBEDDINGS_EVAL, 'wb') as handle:
-        pickle.dump(word_embeddings_eval, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                out_citations = eval_out_citations[i]
+                if len(out_citations):
+                    # gets the rankings of the training papers in the correct order
+                    ranking_ids = get_from_rankings(rankings, train_ids)
+                    true_citations = [citation for citation in ranking_ids if citation in out_citations]
 
-    print("matching citation count = " + str(matching_citation_count))
+                    if len(true_citations):
+                        matching_citation_count += 1
+                        rank = ranking_ids.index(true_citations[0]) + 1
+                        min_rank = min(min_rank, rank)
+                        eval_score.append(1.0 / rank)
+
+    print("Matching citation count = {0}".format(str(matching_citation_count)))
     print(eval_score)
-    print("min rank = " + str(min_rank))
+    print("Min rank = {0}".format(str(min_rank)))
     print(sum(eval_score) / matching_citation_count)
 
 

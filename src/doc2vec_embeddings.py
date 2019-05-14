@@ -12,7 +12,9 @@ WORD_EMBEDDINGS_TRAIN = 'doc2vec_train.pk'
 
 UNK_THRESHOLD = 3
 
+
 def generate_word_embeddings(papers):
+    global document_similarity
     lines = []
     with open(papers, 'rb') as f:
         for line in tqdm(f, desc='Read papers'):
@@ -37,7 +39,7 @@ def generate_word_embeddings(papers):
     model = Doc2Vec(dm=1, min_count=1, window=10, size=150, sample=1e-4, negative=10)
     model.build_vocab(train_docs)
 
-    for _ in trange(1): # TODO - need to change to 20 epochs
+    for _ in trange(1):  # TODO - need to change to 20 epochs
         model.train(train_docs, epochs=model.iter, total_examples=model.corpus_count)
 
     # NOTE: Make sure to always UNK everything!
@@ -77,7 +79,8 @@ def generate_word_embeddings(papers):
 
 
 def create_tagged_doc(abstracts: [str], dictionary):
-    return [TaggedDocument(unk_abstract(abstract.split(), dictionary), str(i)) for i, abstract in tqdm(enumerate(abstracts), desc='UNKing inputs')]
+    return [TaggedDocument(unk_abstract(abstract.split(), dictionary), str(i)) for i, abstract in
+            tqdm(enumerate(abstracts), desc='UNKing inputs')]
 
 
 def unk_abstract(abstract, dictionary):
@@ -109,6 +112,7 @@ def generate_dictionary(word_counts):
             dictionary.append(key)
     dictionary.append("UNK")
     return dictionary
+
 
 def main():
     generate_word_embeddings(sys.argv[1])
