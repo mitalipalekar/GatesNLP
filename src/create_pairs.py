@@ -40,15 +40,15 @@ def main():
                     if paper3 in text.keys() and paper3 not in seen and paper3 not in outCitations[paper1]:
                         seen.add(paper3)
                         one_hop_count += 1
-    true_citation_count = 10000
-    one_hop_count = 10000
-    negative_examples = 10000
+    true_citation_count = 15000
+    one_hop_count = 7500
+    negative_examples = 7500
 
     # cited pairs
     processed = 0
     first_paper = ""
     for paper1, text1 in tqdm(text.items()):
-        for paper2 in outCitations[paper1]:
+        for paper2 in outCitations[paper1][:2]:
             if processed == 15:
                 first_paper = paper1
             if paper2 in text.keys() and processed < true_citation_count:
@@ -66,6 +66,34 @@ def main():
                 if paper1 == first_paper:
                     print(result)
                 out.write(json.dumps(result) + '\n')
+
+    # random cited pairs
+    """
+    processed = 0
+    ids = list(text.keys())
+    for paper1, text1 in tqdm(text.items()):
+        count = 0
+        while count < 1:
+            paper2 = random.choice(ids)
+            if processed >= true_citation_count:
+                break
+            if paper2 in outCitations[paper1] and not paper1 == paper2:
+                if processed < int(0.8 * true_citation_count):
+                    out = train
+                elif processed >= int(0.8 * true_citation_count) and processed < int(0.9 * true_citation_count):
+                    out = dev
+                else:
+                    out = test
+                processed += 1
+                count += 1
+                result = {}
+                result["query_paper"] = text1
+                result["candidate_paper"] = text[paper2]
+                result["relevance"] = "1"
+                if paper1 == first_paper:
+                    print(result)
+                out.write(json.dumps(result) + '\n')
+    """
 
     processed = 0
 
@@ -92,11 +120,12 @@ def main():
                             print(result)
                         out.write(json.dumps(result) + '\n')
 
+    # random negatives
     processed = 0
     ids = list(text.keys())
     for paper1, text1 in tqdm(text.items()):
         count = 0
-        while count < 5:
+        while count < 1:
             paper2 = random.choice(ids)
             if processed >= negative_examples:
                 break
@@ -112,7 +141,7 @@ def main():
                 result = {}
                 result["query_paper"] = text1
                 result["candidate_paper"] = text[paper2]
-                result["relevance"] = "1"
+                result["relevance"] = "0"
                 if paper1 == first_paper:
                     print(result)
                 out.write(json.dumps(result) + '\n')
