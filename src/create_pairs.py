@@ -4,9 +4,9 @@ from tqdm import tqdm
 import random
 
 PAPERS = '/projects/instr/19sp/cse481n/GatesNLP/extended_dataset.txt'
-TRAIN = '/projects/instr/19sp/cse481n/GatesNLP/pairs_train.txt'
-DEV = '/projects/instr/19sp/cse481n/GatesNLP/pairs_dev.txt'
-TEST = '/projects/instr/19sp/cse481n/GatesNLP/pairs_test.txt'
+TRAIN = '/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/pairs_train.txt'
+DEV = '/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/pairs_dev.txt'
+TEST = '/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/pairs_test.txt'
 
 def main():
     f = open(PAPERS, 'r')

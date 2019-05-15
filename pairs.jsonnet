@@ -1,6 +1,6 @@
 {
-    "train_data_path": "/projects/instr/19sp/cse481n/GatesNLP/pairs_train.txt",
-    "validation_data_path": "/projects/instr/19sp/cse481n/GatesNLP/pairs_dev.txt",
+    "train_data_path": "/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/pairs_train.txt",
+    "validation_data_path": "/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/pairs_dev.txt",
 
     "dataset_reader": {
       "type": "pairs_reader",
