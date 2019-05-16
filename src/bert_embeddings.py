@@ -1,28 +1,22 @@
 import json
-import os
 import pickle
 import sys
 
 import torch
+from gnlputils import extract_keys, split_data, cosine_similarity
+from gnlputils import get_from_rankings
 from pytorch_pretrained_bert import BertTokenizer, BertModel
 from tqdm import tqdm
 
-from gnlputils import extract_keys, split_data, cosine_similarity
-
-from gnlputils import get_from_rankings
-
-WORD_EMBEDDINGS_TRAIN = 'word_embeddings_train.pk'
-WORD_EMBEDDINGS_EVAL = 'word_embeddings_eval.pk'
+WORD_EMBEDDINGS_TRAIN = 'complete_bert_embeddings_train.pk'
+WORD_EMBEDDINGS_EVAL = 'complete_bert_embeddings_eval.pk'
 
 
 def take_mean_bert(vector):
     return torch.mean(vector[0], dim=0)
 
 
-def bert(abstract):
-    # Load pre-trained model tokenizer (vocabulary)
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-
+def bert(abstract, tokenizer, model):
     # Tokenized input
     tokenized_text = tokenizer.tokenize(abstract)
     if len(tokenized_text) > 512:
@@ -32,10 +26,6 @@ def bert(abstract):
     indexed_tokens = tokenizer.convert_tokens_to_ids(tokenized_text)
     # Convert inputs to PyTorch tensors
     tokens_tensor = torch.tensor([indexed_tokens])
-
-    # Load pre-trained model (weights)
-    model = BertModel.from_pretrained('bert-base-uncased')
-    model.eval()
 
     # If you have a GPU, put everything on cuda
     if torch.cuda.is_available():
@@ -75,21 +65,23 @@ def generate_word_embeddings(papers):
     matching_citation_count = 1
     min_rank = float("inf")
 
-    if not os.path.isfile(WORD_EMBEDDINGS_TRAIN):
-        with open(WORD_EMBEDDINGS_TRAIN, 'wb') as handle:
-            for abstract in tqdm(train_abstracts, desc='Extracting embeddings for training set'):
-                if abstract:
-                    word_embedding = take_mean_bert(bert(abstract))
-                    pickle.dump(word_embedding, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    model = BertModel.from_pretrained('bert-base-uncased')
+    model.eval()
 
-    with open(WORD_EMBEDDINGS_TRAIN, 'rb') as handle:
-        print('Total number of outer loop iterations: {0}'.format(str(len(eval_abstracts))))
-        for i, abstract in tqdm(enumerate(eval_abstracts), desc='Extracting embeddings for evaluation set'):
+    for abstract in tqdm(train_abstracts, desc='Extracting embeddings for training set'):
+        with open(WORD_EMBEDDINGS_TRAIN, 'ab') as handle:
             if abstract:
-                word_embedding_eval = take_mean_bert(bert(abstract))
-                if not os.path.isfile(WORD_EMBEDDINGS_EVAL):
-                    with open(WORD_EMBEDDINGS_EVAL, 'wb') as f:
-                        pickle.dump(word_embedding_eval, f, protocol=pickle.HIGHEST_PROTOCOL)
+                word_embedding = take_mean_bert(bert(abstract, tokenizer, model))
+                pickle.dump(word_embedding, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    print('Total number of outer loop iterations: {0}'.format(str(len(eval_abstracts))))
+    for i, abstract in tqdm(enumerate(eval_abstracts), desc='Extracting embeddings for evaluation set'):
+        if abstract:
+            with open(WORD_EMBEDDINGS_TRAIN, 'rb') as handle:
+                word_embedding_eval = take_mean_bert(bert(abstract, tokenizer, model))
+                with open(WORD_EMBEDDINGS_EVAL, 'ab') as f:
+                    pickle.dump(word_embedding_eval, f, protocol=pickle.HIGHEST_PROTOCOL)
                 rankings = []
                 try:
                     train_index = 0
