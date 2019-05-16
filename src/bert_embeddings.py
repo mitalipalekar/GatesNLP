@@ -8,8 +8,8 @@ from gnlputils import get_from_rankings
 from pytorch_pretrained_bert import BertTokenizer, BertModel
 from tqdm import tqdm
 
-WORD_EMBEDDINGS_TRAIN = 'complete_bert_embeddings_train.pk'
-WORD_EMBEDDINGS_EVAL = 'complete_bert_embeddings_eval.pk'
+WORD_EMBEDDINGS_TRAIN = 'complete_bert_embeddings_train_fix_bugs.pk'
+WORD_EMBEDDINGS_EVAL = 'complete_bert_embeddings_eval_fix_bugs.pk'
 
 
 def take_mean_bert(vector):
@@ -29,7 +29,7 @@ def bert(abstract, tokenizer, model):
 
     # If you have a GPU, put everything on cuda
     if torch.cuda.is_available():
-        with torch.cuda.device(0):
+        with torch.cuda.device(1): # NOTE: what you wanna change to set device of GPU
             tokens_tensor = tokens_tensor.cuda()
             model = model.cuda()
 
@@ -72,16 +72,18 @@ def generate_word_embeddings(papers):
     for abstract in tqdm(train_abstracts, desc='Extracting embeddings for training set'):
         with open(WORD_EMBEDDINGS_TRAIN, 'ab') as handle:
             if abstract:
+                abstract = abstract.lower()
                 word_embedding = take_mean_bert(bert(abstract, tokenizer, model))
                 pickle.dump(word_embedding, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    print('Total number of outer loop iterations: {0}'.format(str(len(eval_abstracts))))
     for i, abstract in tqdm(enumerate(eval_abstracts), desc='Extracting embeddings for evaluation set'):
         if abstract:
+            abstract = abstract.lower()
+            word_embedding_eval = take_mean_bert(bert(abstract, tokenizer, model))
+            with open(WORD_EMBEDDINGS_EVAL, 'ab') as f:
+                pickle.dump(word_embedding_eval, f, protocol=pickle.HIGHEST_PROTOCOL)
+
             with open(WORD_EMBEDDINGS_TRAIN, 'rb') as handle:
-                word_embedding_eval = take_mean_bert(bert(abstract, tokenizer, model))
-                with open(WORD_EMBEDDINGS_EVAL, 'ab') as f:
-                    pickle.dump(word_embedding_eval, f, protocol=pickle.HIGHEST_PROTOCOL)
                 rankings = []
                 try:
                     train_index = 0
