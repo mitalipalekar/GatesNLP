@@ -13,26 +13,27 @@
     "model": {
         "type": "relevance_classifier",
         "text_field_embedder": {
-              "token_embedders": {
-                "tokens": {
-                  "type": "embedding",
-                  "embedding_dim": 40
-                }
-              }
-            },
-            "encoder": {
-              "type": "rnn",
-              "bidirectional": false,
-              "input_size": 40,
-              "hidden_size": 80,
-              "num_layers": 1
-            },
-            "classifier_feedforward": {
-              "input_dim": 80,
-              "num_layers": 1,
-              "hidden_dims": [2],
-              "activations": ["linear"],
-              "dropout": [0.2]
+          "token_embedders": {
+            "tokens": {
+              "type": "embedding",
+              "embedding_dim": 50
+            }
+          }
+        },
+        "encoder": {
+          "type": "lstm",
+          "input_size": 50,
+          "hidden_size": 50,
+          "num_layers": 2,
+          "dropout": 0.4,
+          "bidirectional": true
+        },
+        "classifier_feedforward": {
+          "input_dim": 100,
+          "num_layers": 2,
+          "hidden_dims": [50, 2],
+          "activations": ["tanh","linear"],
+          "dropout": [0.4, 0.4]
         }
     },
     "iterator": {
@@ -44,7 +45,8 @@
         "num_serialized_models_to_keep": 2,
         "num_epochs": 40,
         "patience": 10,
-        "cuda_device": 1
+        "cuda_device": 0,
+        "validation_metric": "+accuracy"
     }
 
 }
