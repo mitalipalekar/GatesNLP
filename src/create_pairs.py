@@ -10,9 +10,6 @@ TEST = '/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/pairs_test.txt'
 
 def main():
     f = open(PAPERS, 'r')
-    train = open(TRAIN, 'w')
-    dev = open(DEV, 'w')
-    test = open(TEST, 'w')
 
     text = dict()
     outCitations = dict()
@@ -27,6 +24,10 @@ def main():
     one_hop_count = 7500
     negative_examples = 7500
 
+    processed_train = []
+    processed_dev = []
+    processed_test = []
+
     # random cited pairs
     processed = 0
     ids = list(text.keys())
@@ -35,19 +36,17 @@ def main():
         if len(outCitations[paper1]) != 0:
             paper2 = random.choice(outCitations[paper1])
             if paper2 in text.keys():
-                if processed < int(0.8 * true_citation_count):
-                    out = train
-                elif processed >= int(0.8 * true_citation_count) and processed < int(0.9 * true_citation_count):
-                    out = dev
-                else:
-                    out = test
-                processed += 1
                 result = {}
                 result["query_paper"] = text[paper1]
                 result["candidate_paper"] = text[paper2]
                 result["relevance"] = "1"
-                out.write(json.dumps(result) + '\n')
-    print(processed)
+                if processed < int(0.8 * true_citation_count):
+                    processed_train.append(result)
+                elif processed >= int(0.8 * true_citation_count) and processed < int(0.9 * true_citation_count):
+                    processed_dev.append(result)
+                else:
+                    processed_test.append(result)
+                processed += 1
 
     processed = 0
 
@@ -60,19 +59,17 @@ def main():
                 if len(outCitations[paper2]) != 0:
                     paper3 = random.choice(outCitations[paper2])
                     if paper3 in text.keys() and paper3 not in outCitations[paper1]:
-                        if processed < int(0.8 * one_hop_count):
-                            out = train
-                        elif processed >= int(0.8 * one_hop_count) and processed < int(0.9 * one_hop_count):
-                            out = dev
-                        else:
-                            out = test
-                        processed += 1
                         result = {}
                         result["query_paper"] = text[paper1]
                         result["candidate_paper"] = text[paper3]
                         result["relevance"] = "0"
-                        out.write(json.dumps(result) + '\n')
-    print(processed)
+                        if processed < int(0.8 * one_hop_count):
+                            processed_train.append(result)
+                        elif processed >= int(0.8 * one_hop_count) and processed < int(0.9 * one_hop_count):
+                            processed_dev.append(result)
+                        else:
+                            processed_test.append(result)
+                        processed += 1
 
     # random negatives
     processed = 0
@@ -82,20 +79,29 @@ def main():
         while count < 1:
             paper2 = random.choice(ids)
             if paper2 not in outCitations[paper1] and not paper1 == paper2:
-                if processed < int(0.8 * negative_examples):
-                    out = train
-                elif processed >= int(0.8 * negative_examples) and processed < int(0.9 * negative_examples):
-                    out = dev
-                else:
-                    out = test
-                processed += 1
-                count += 1
                 result = {}
                 result["query_paper"] = text[paper1]
                 result["candidate_paper"] = text[paper2]
                 result["relevance"] = "0"
-                out.write(json.dumps(result) + '\n')
-    print(processed)
+                if processed < int(0.8 * negative_examples):
+                    processed_train.append(result)
+                elif processed >= int(0.8 * negative_examples) and processed < int(0.9 * negative_examples):
+                    processed_dev.append(result)
+                else:
+                    processed_test.append(result)
+                processed += 1
+                count += 1
+
+
+    output_shuffle(open(TRAIN, 'w'), processed_train)
+    output_shuffle(open(DEV, 'w'), processed_dev)
+    output_shuffle(open(TEST, 'w'), processed_test)
+
+
+def output_shuffle(out, outputs):
+    random.shuffle(outputs)
+    for output in outputs:
+        out.write(json.dumps(output) + '\n')
 
 
 if __name__ == '__main__':
