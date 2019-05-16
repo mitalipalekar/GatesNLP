@@ -57,8 +57,7 @@ class RelevanceModel(Model):
                                      "respectively.".format(text_field_embedder.get_output_dim(),
                                                             encoder.get_input_dim()))
         self.metrics = {
-            "accuracy": CategoricalAccuracy(),
-            "accuracy3": CategoricalAccuracy(top_k=3)
+            "accuracy": CategoricalAccuracy()
         }
         self.loss = torch.nn.CrossEntropyLoss()
 
@@ -68,8 +67,7 @@ class RelevanceModel(Model):
     def forward(self,  # type: ignore
                 query_paper: Dict[str, torch.LongTensor],
                 candidate_paper: Dict[str, torch.LongTensor],
-                label: torch.LongTensor = None,
-                metadata: List[Dict[str, Any]] = None) -> Dict[str, torch.Tensor]:
+                label: torch.LongTensor = None) -> Dict[str, torch.Tensor]:
         # pylint: disable=arguments-differ
         """
         Parameters
@@ -103,10 +101,6 @@ class RelevanceModel(Model):
             for metric in self.metrics.values():
                 metric(logits, label)
             output_dict["loss"] = loss
-
-        if metadata is not None:
-            output_dict["query_paper"] = [x["query_paper"] for x in metadata]
-            output_dict["candidate_paper"] = [x["candidate_paper"] for x in metadata]
 
         return output_dict
 

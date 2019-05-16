@@ -66,8 +66,4 @@ class PairsDatasetReader(DatasetReader):
         if relevance is not None:
             fields['label'] = LabelField(relevance)
 
-        fields["metadata"] = MetadataField({"query_paper": query_paper,
-                                            "candidate_paper": candidate_paper,
-                                            'label': relevance})
-
         return Instance(fields)
