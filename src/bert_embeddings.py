@@ -8,8 +8,8 @@ from gnlputils import get_from_rankings
 from pytorch_pretrained_bert import BertTokenizer, BertModel
 from tqdm import tqdm
 
-WORD_EMBEDDINGS_TRAIN = 'complete_bert_embeddings_train_fix_bugs.pk'
-WORD_EMBEDDINGS_EVAL = 'complete_bert_embeddings_eval_fix_bugs.pk'
+WORD_EMBEDDINGS_TRAIN = 'complete_bert_embeddings_train_fix_bugs_v2.pk'
+WORD_EMBEDDINGS_EVAL = 'complete_bert_embeddings_eval_fix_bugs_v2.pk'
 
 
 def take_mean_bert(vector):
@@ -24,18 +24,23 @@ def bert(abstract, tokenizer, model):
 
     # Convert token to vocabulary indices
     indexed_tokens = tokenizer.convert_tokens_to_ids(tokenized_text)
+    segments_ids = get_segment_ids(tokenized_text)
+    assert len(indexed_tokens) == len(segments_ids)
+
     # Convert inputs to PyTorch tensors
     tokens_tensor = torch.tensor([indexed_tokens])
+    segments_tensor = torch.tensor([segments_ids])
 
     # If you have a GPU, put everything on cuda
     if torch.cuda.is_available():
         with torch.cuda.device(1): # NOTE: what you wanna change to set device of GPU
             tokens_tensor = tokens_tensor.cuda()
+            segments_tensor = segments_tensor.cuda()
             model = model.cuda()
 
     # Predict hidden states features for each layer
     with torch.no_grad():
-        encoded_layers, _ = model(tokens_tensor)
+        encoded_layers, _ = model(tokens_tensor, segments_tensor)
     # We have a hidden states for each of the 12 layers in model bert-base-uncased
     return encoded_layers[11]
 
@@ -107,11 +112,22 @@ def generate_word_embeddings(papers):
                         rank = ranking_ids.index(true_citations[0]) + 1
                         min_rank = min(min_rank, rank)
                         eval_score.append(1.0 / rank)
+        break
 
     print("Matching citation count = {0}".format(str(matching_citation_count)))
     print(eval_score)
     print("Min rank = {0}".format(str(min_rank)))
     print(sum(eval_score) / matching_citation_count)
+
+
+def get_segment_ids(tokenized_text):
+    sentence_ids = []
+    i = 0
+    for token in tokenized_text:
+        sentence_ids.append(i)
+        if token == ".":
+            i += 1
+    return sentence_ids
 
 
 def main():
