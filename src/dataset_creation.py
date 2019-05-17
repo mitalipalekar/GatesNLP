@@ -7,8 +7,11 @@ import json
 from tqdm import tqdm
 
 BASE_URL = 'https://s3-us-west-2.amazonaws.com/ai2-s2-research-public/open-corpus/'
-OUTPUT = 'extended_dataset.txt'
-VENUES = ['ACL', 'NAACL', 'EMNLP', 'ACM Conference on Computer and Communications Security', 'IEEE Symposium on Security and Privacy', 'IEEE International Conference on Information Theory and Information Security', 'IEEE Transactions on Information Forensics and Security', 'USENIX Security Symposium']
+OUTPUT = 'extended_large.txt'
+VENUES = ['ACL', 'NAACL', 'EMNLP', 'ACM Conference on Computer and Communications Security',
+          'IEEE Symposium on Security and Privacy',
+          'IEEE International Conference on Information Theory and Information Security',
+          'IEEE Transactions on Information Forensics and Security', 'USENIX Security Symposium']
 
 
 def main():
@@ -30,18 +33,12 @@ def process_corpus(name, out):
     with gzip.open(name) as f:
         for line in tqdm(f, desc='Line'):
             parsed_json = json.loads(line)
-            if substring_of_array(parsed_json['venue']):
+            if parsed_json['venue'] in VENUES:
                 out.write(line.decode())
 
 
 def get_corpus_files(filename):
     return [line.strip() for line in filename if line.startswith('corpus')]
-
-def substring_of_array(parsed_venue):
-    for venue in VENUES:
-        if venue in parsed_venue:
-            return True;
-    return False
 
 
 if __name__ == '__main__':

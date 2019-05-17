@@ -109,7 +109,7 @@ def main():
             # EVALUATION METRIC LOGIC
             # gets citations if there are any
             out_citations = eval_out_citations[i]
-
+            
             # gets the rankings of the training papers in the correct order
             ranking_ids = get_from_rankings(rankings, train_ids)
             true_citations = [citation for citation in ranking_ids if citation in out_citations]
