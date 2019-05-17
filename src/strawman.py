@@ -109,7 +109,7 @@ def main():
                 if is_jaccard:
                     score = jaccard_similarity(dev_tokens, train_tokens)
                 elif is_allennlp:
-                    score = scores[train_index]['logits'][0]
+                    score = scores[train_index]['class_probabilities'][0]
                 else:
                     eval_index = i + len(train_token_rows)
                     if is_test:
