@@ -75,9 +75,9 @@ def glove_embeddings(papers):
     min_rank = float("inf")
     for i, eval_abstract in tqdm(enumerate(eval_abstracts[:1]), desc='generating rankings for evaluation set'):
         rankings = []
-        for j, train_abstract in tqdm(enumerate(train_abstracts), desc='iterating through train abstracts'):
+        for j, train_abstract in tqdm(enumerate(train_abstracts[:2000]), desc='iterating through train abstracts'):
             if len(eval_abstract.split()) and len(train_abstract.split()):
-                document_similarity = KeyedVectors.similarity_unseen_docs(model, unk_abstract(train_abstract.split(), dictionary),
+                document_similarity = model.wmdistance(unk_abstract(train_abstract.split(), dictionary),
                                                          unk_abstract(eval_abstract.split(), dictionary))
             rankings.append((document_similarity, j))
         rankings.sort(key=lambda x: x[0], reverse=True)
@@ -93,7 +93,6 @@ def glove_embeddings(papers):
                 rank = ranking_ids.index(true_citations[0]) + 1
                 min_rank = min(min_rank, rank)
                 eval_score.append(1.0 / rank)
-        break
 
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
