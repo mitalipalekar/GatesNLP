@@ -39,30 +39,27 @@ def generate_word_embeddings(papers):
     model = Doc2Vec(dm=1, min_count=1, window=10, size=150, sample=1e-4, negative=10)
     model.build_vocab(train_docs)
 
-    for _ in trange(1):  # TODO - need to change to 20 epochs
+    for _ in trange(20):
         model.train(train_docs, epochs=model.iter, total_examples=model.corpus_count)
 
     # NOTE: Make sure to always UNK everything!
     eval_score = []
     matching_citation_count = 1
     min_rank = float("inf")
-    for i, eval_abstract in tqdm(enumerate(eval_abstracts[:1]), desc='generating rankings for evaluation set'):
+    for i, eval_abstract in tqdm(enumerate(eval_abstracts[:2]), desc='generating rankings for evaluation set'):
         rankings = []
-        for j, train_abstract in tqdm(enumerate(train_abstracts), desc='iterating through train abstracts'):
-            if len(eval_abstract.split()) and len(train_abstract.split()):
-                document_similarity = model.n_similarity(unk_abstract(train_abstract.split(), dictionary),
-                                                         unk_abstract(eval_abstract.split(), dictionary))
-            rankings.append((document_similarity, j))
+        if len(eval_abstract.split()):
+            for j, train_abstract in tqdm(enumerate(train_abstracts), desc='iterating through train abstracts'):
+                if len(train_abstract.split()):
+                    document_similarity = model.n_similarity(unk_abstract(train_abstract.split(), dictionary),
+                                                             unk_abstract(eval_abstract.split(), dictionary))
+                    rankings.append((document_similarity, j))
         rankings.sort(key=lambda x: x[0], reverse=True)
 
         out_citations = eval_out_citations[i]
         if len(out_citations):
             # gets the rankings of the training papers in the correct order
             ranking_ids = get_from_rankings(rankings, train_ids)
-            print('----------------------- RANKING IDS ---------------------------')
-            print(ranking_ids)
-            print('----------------------- OUT CITATIONS ---------------------------')
-            print(out_citations)
             true_citations = [citation for citation in ranking_ids if citation in out_citations]
             print(true_citations)
             if len(true_citations):
@@ -79,8 +76,7 @@ def generate_word_embeddings(papers):
 
 
 def create_tagged_doc(abstracts: [str], dictionary):
-    return [TaggedDocument(unk_abstract(abstract.split(), dictionary), str(i)) for i, abstract in
-            tqdm(enumerate(abstracts), desc='UNKing inputs')]
+    return [TaggedDocument(unk_abstract(abstract.split(), dictionary), str(i)) for i, abstract in tqdm(enumerate(abstracts), desc='UNKing inputs')]
 
 
 def unk_abstract(abstract, dictionary):
