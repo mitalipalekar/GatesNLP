@@ -82,6 +82,7 @@ def main():
     matching_citation_count = 0
     min_rank = float("inf")
     for i, eval_row in tqdm(enumerate(eval_abstracts), desc="Evaluating dev/test set abstracts"):
+        out_citations = eval_out_citations[i]
         if len(out_citations) > 0:
             rankings = []
             eval_text = eval_title[i] + " " + eval_row
@@ -108,7 +109,6 @@ def main():
 
             # EVALUATION METRIC LOGIC
             # gets citations if there are any
-            out_citations = eval_out_citations[i]
             
             # gets the rankings of the training papers in the correct order
             ranking_ids = get_from_rankings(rankings, train_ids)
