@@ -17,7 +17,7 @@ from gatesnlp.predictors import predictor
 
 from gnlputils import cosine_similarity, extract_keys, get_from_rankings, split_data
 
-PAPERS: str = "../dataset/dataset_small.txt"
+PAPERS: str = "/projects/instr/19sp/cse481n/GatesNLP/extended_dataset.txt"
 MODEL: str = "/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/quadruple/model.tar.gz"
 MODEL_NAME: str = "relevance_predictor"
 
@@ -95,7 +95,7 @@ def main():
                 if is_jaccard:
                     score = jaccard_similarity(dev_tokens, train_tokens)
                 elif is_allennlp:
-                    score = scores[train_index]['class_probabilities'][0]
+                    score = scores[train_index]['class_probabilities'][1]
                 else:
                     eval_index = i + len(train_token_rows)
                     if is_test:

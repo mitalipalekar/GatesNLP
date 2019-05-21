@@ -20,9 +20,9 @@ def main():
         text[id] = paper['title'] + ' ' + paper['paperAbstract']
         outCitations[id] = paper['outCitations']
 
-    true_citation_count = 15000
-    one_hop_count = 7500
-    negative_examples = 7500
+    true_citation_count = 60000
+    one_hop_count = 0
+    negative_examples = 60000
 
     processed_train = []
     processed_dev = []
