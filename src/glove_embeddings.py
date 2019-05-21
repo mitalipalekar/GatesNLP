@@ -1,7 +1,6 @@
 import json
 import sys
 
-from collections import Counter
 from gensim.models import KeyedVectors
 from gensim.scripts.glove2word2vec import glove2word2vec
 from gnlputils import extract_keys, split_data, get_from_rankings
@@ -9,32 +8,6 @@ from tqdm import tqdm
 
 GLOVE_INPUT_FILE_PATH = '/projects/instr/19sp/cse481n/GatesNLP/glove.6B.50d.txt'
 WORD2VEC_OUTPUT_FILE = 'glove.6B.50d.txt.word2vec'
-
-UNK_THRESHOLD = 3
-
-
-def unk_abstract(abstract, dictionary):
-    return [word if word in dictionary else 'UNK' for word in abstract]
-
-
-def unk_train(train_abstracts):
-    word_counts = {}
-    for abstract in train_abstracts:
-        for word in abstract.split():
-            if word in word_counts:
-                word_counts[word] = word_counts.get(word) + 1
-            else:
-                word_counts[word] = 1
-
-    return generate_dictionary(word_counts)
-
-
-def generate_dictionary(word_counts):
-    dictionary = {'UNK'}
-    for key, value in word_counts.items():
-        if value > UNK_THRESHOLD:
-            dictionary.add(key)
-    return dictionary
 
 
 def glove_embeddings(papers):
@@ -59,21 +32,18 @@ def glove_embeddings(papers):
     train_abstracts, eval_abstracts = split_data(abstracts, 0.8, 0.9, is_test)
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
-    dictionary = unk_train(train_abstracts)
-
     # NOTE: Make sure to always UNK everything!
     eval_score = []
     matching_citation_count = 1
     min_rank = float("inf")
-    for i, eval_abstract in tqdm(list(enumerate(eval_abstracts)), desc='generating rankings for evaluation set'):
+    for i, eval_abstract in tqdm(list(enumerate(eval_abstracts[:2])), desc='generating rankings for evaluation set'):
         rankings = []
         eval_split = eval_abstract.lower().split()
         if len(eval_split):
             for j, train_abstract in tqdm(list(enumerate(train_abstracts)), desc='iterating through train abstracts'):
                 train_split = train_abstract.lower().split()
                 if len(train_split):
-                    document_similarity = model.wmdistance(unk_abstract(train_split, dictionary),
-                                                           unk_abstract(eval_split, dictionary))
+                    document_similarity = model.wmdistance(train_split, eval_split)
                     rankings.append((document_similarity, j))
         rankings.sort(key=lambda x: x[0])
 
