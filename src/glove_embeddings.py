@@ -22,6 +22,7 @@ def glove_embeddings(papers):
     lines.sort(key=lambda x: x['year'])
 
     ids = extract_keys(lines, 'id')
+    titles = extract_keys(lines, 'title')
     abstracts = extract_keys(lines, 'paperAbstract')
     out_citations = extract_keys(lines, 'outCitations')
 
@@ -30,17 +31,18 @@ def glove_embeddings(papers):
 
     train_ids, eval_ids = split_data(ids, 0.8, 0.9, is_test)
     train_abstracts, eval_abstracts = split_data(abstracts, 0.8, 0.9, is_test)
+    train_titles, eval_titles = split_data(titles, 0.8, 0.9, is_test)
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
     # NOTE: Make sure to always UNK everything!
     eval_score = []
     matching_citation_count = 1
     min_rank = float("inf")
-    for i, eval_abstract in tqdm(list(enumerate(eval_abstracts[:2])), desc='generating rankings for evaluation set'):
+    for i, eval_abstract in tqdm(list(enumerate(eval_titles)), desc='generating rankings for evaluation set'):
         rankings = []
         eval_split = eval_abstract.lower().split()
         if len(eval_split):
-            for j, train_abstract in tqdm(list(enumerate(train_abstracts)), desc='iterating through train abstracts'):
+            for j, train_abstract in tqdm(list(enumerate(train_titles)), desc='iterating through train abstracts'):
                 train_split = train_abstract.lower().split()
                 if len(train_split):
                     document_similarity = model.wmdistance(train_split, eval_split)
