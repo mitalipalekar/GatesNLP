@@ -1,4 +1,5 @@
 import json
+import sys
 
 from collections import Counter
 from gensim.models import KeyedVectors
@@ -66,14 +67,15 @@ def glove_embeddings(papers):
     min_rank = float("inf")
     for i, eval_abstract in tqdm(list(enumerate(eval_abstracts)), desc='generating rankings for evaluation set'):
         rankings = []
-        for j, train_abstract in tqdm(list(enumerate(train_abstracts)), desc='iterating through train abstracts'):
-            eval_split = eval_abstract.lower().split()
-            train_split = train_abstract.lower().split()
-            if len(eval_split) and len(train_split):
-                document_similarity = model.wmdistance(unk_abstract(train_split, dictionary),
-                                                       unk_abstract(eval_split, dictionary))
-                rankings.append((document_similarity, j))
-        rankings.sort(key=lambda x: x[0], reverse=True)
+        eval_split = eval_abstract.lower().split()
+        if len(eval_split):
+            for j, train_abstract in tqdm(list(enumerate(train_abstracts)), desc='iterating through train abstracts'):
+                train_split = train_abstract.lower().split()
+                if len(train_split):
+                    document_similarity = model.wmdistance(unk_abstract(train_split, dictionary),
+                                                           unk_abstract(eval_split, dictionary))
+                    rankings.append((document_similarity, j))
+        rankings.sort(key=lambda x: x[0])
 
         out_citations = eval_out_citations[i]
         if len(out_citations):
@@ -85,6 +87,8 @@ def glove_embeddings(papers):
                 rank = ranking_ids.index(true_citations[0]) + 1
                 min_rank = min(min_rank, rank)
                 eval_score.append(1.0 / rank)
+                print("rank for iteration " + str(i) + ": " + str(rank))
+                print("eval score for iteration " + str(i) + ": " + str(eval_score))
 
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
@@ -93,7 +97,7 @@ def glove_embeddings(papers):
 
 
 def main():
-    glove_embeddings('/projects/instr/19sp/cse481n/GatesNLP/extended_dataset.txt')
+    glove_embeddings(sys.argv[1])
 
 
 if __name__ == '__main__':
