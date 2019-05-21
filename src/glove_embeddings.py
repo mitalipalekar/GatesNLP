@@ -42,7 +42,7 @@ def glove_embeddings(papers):
         rankings = []
         eval_split = eval_abstract.lower().split()
         if len(eval_split):
-            for j, train_abstract in tqdm(list(enumerate(train_titles)), desc='iterating through train abstracts'):
+            for j, train_abstract in tqdm(list(enumerate(train_titles)), desc='iterating through train titlesg'):
                 train_split = train_abstract.lower().split()
                 if len(train_split):
                     document_similarity = model.wmdistance(train_split, eval_split)
