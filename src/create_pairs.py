@@ -3,10 +3,11 @@ import json
 from tqdm import tqdm
 import random
 
-PAPERS = '/projects/instr/19sp/cse481n/GatesNLP/extended_dataset.txt'
-TRAIN = '/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/pairs_train.txt'
-DEV = '/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/pairs_dev.txt'
-TEST = '/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/pairs_test.txt'
+SHARED_DIR: str = "/projects/instr/19sp/cse481n/GatesNLP/"
+PAPERS = SHARED_DIR + 'extended_dataset.txt'
+TRAIN = SHARED_DIR + 'supervised_pairs/pairs_train.txt'
+DEV = SHARED_DIR + 'supervised_pairs/pairs_dev.txt'
+TEST = SHARED_DIR + 'supervised_pairs/pairs_test.txt'
 
 def main():
     f = open(PAPERS, 'r')

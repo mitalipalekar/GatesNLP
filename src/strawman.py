@@ -17,9 +17,11 @@ from gatesnlp.predictors import predictor
 
 from gnlputils import cosine_similarity, extract_keys, get_from_rankings, split_data
 
+GPU: int = -1
 PAPERS: str = "/projects/instr/19sp/cse481n/GatesNLP/extended_dataset.txt"
 MODEL: str = "/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/quadruple/model.tar.gz"
 MODEL_NAME: str = "relevance_predictor"
+BATCH_SIZE: int = 650
 
 
 def tf_idf_ranking(titles, abstracts):
@@ -35,12 +37,13 @@ def main():
     nlp = spacy.load("en_core_web_sm")
     tokenizer = English().Defaults.create_tokenizer(nlp)
 
-    is_test = len(sys.argv) > 1 and sys.argv[1] == "test"
-    is_jaccard = len(sys.argv) > 2 and sys.argv[2] == "j"
-    is_allennlp = len(sys.argv) > 2 and sys.argv[2] == "a"
+    is_jaccard = len(sys.argv) > 1 and sys.argv[1] == "j"
+    is_allennlp = len(sys.argv) > 1 and sys.argv[1] == "a"
+    is_tfidf = len(sys.argv) > 1 and sys.argv[1] == "t"
+    is_test = len(sys.argv) > 2 and sys.argv[2] == "test"
     lemmatize = len(sys.argv) > 3 and sys.argv[3] == "1"
 
-    archive = load_archive(MODEL)
+    archive = load_archive(MODEL, cuda_device=GPU)
     predictor = Predictor.from_archive(archive, MODEL_NAME)
 
     lines = []
@@ -77,11 +80,13 @@ def main():
     f.write("test title, top-10 similar papers\n")
 
     # calculate our evaluation metric
-    tfidf_matrix = tf_idf_ranking(titles, abstracts)
+    if is_tfidf:
+        tfidf_matrix = tf_idf_ranking(titles, abstracts)
     eval_score = []
     matching_citation_count = 0
     min_rank = float("inf")
     for i, eval_row in tqdm(enumerate(eval_abstracts), desc="Evaluating dev/test set abstracts"):
+        out_citations = eval_out_citations[i]
         if len(out_citations) > 0:
             rankings = []
             eval_text = eval_title[i] + " " + eval_row
@@ -89,26 +94,30 @@ def main():
 
             # rank all the papers in the training set
             if is_allennlp:
-                scores = predictor.predict_batch_json(
-                    [{"query_paper": eval_text, "candidate_paper": train_text} for train_text in train_texts])
+                scores = []
+                for i in range(0, len(train_texts), BATCH_SIZE):
+                    batch = [{"query_paper": eval_text, "candidate_paper": train_text}
+                             for train_text in train_texts[i:min(i+BATCH_SIZE, len(train_texts))]]
+                    scores.extend(predictor.predict_batch_json(batch))
             for train_index, train_tokens in enumerate(train_token_rows):
                 if is_jaccard:
                     score = jaccard_similarity(dev_tokens, train_tokens)
                 elif is_allennlp:
                     score = scores[train_index]['class_probabilities'][1]
-                else:
+                elif is_tfidf:
                     eval_index = i + len(train_token_rows)
                     if is_test:
                         eval_index += len(ids) - int(0.9 * len(ids))
                     a = tfidf_matrix[eval_index]
                     b = tfidf_matrix[train_index]
                     score = cosine_similarity(a, b)
+                else:
+                    raise ValueError("did not provide proper evaluation type as first command line argument")
                 rankings.append((score, train_index))
             rankings.sort(key=lambda x: x[0], reverse=True)
 
             # EVALUATION METRIC LOGIC
             # gets citations if there are any
-            out_citations = eval_out_citations[i]
             
             # gets the rankings of the training papers in the correct order
             ranking_ids = get_from_rankings(rankings, train_ids)
