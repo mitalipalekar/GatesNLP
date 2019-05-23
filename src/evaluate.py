@@ -95,9 +95,9 @@ def main():
             # rank all the papers in the training set
             if is_allennlp:
                 scores = []
-                for i in range(0, len(train_texts), BATCH_SIZE):
+                for j in range(0, len(train_texts), BATCH_SIZE):
                     batch = [{"query_paper": eval_text, "candidate_paper": train_text}
-                             for train_text in train_texts[i:min(i+BATCH_SIZE, len(train_texts))]]
+                             for train_text in train_texts[j:min(j+BATCH_SIZE, len(train_texts))]]
                     scores.extend(predictor.predict_batch_json(batch))
             for train_index, train_tokens in enumerate(train_token_rows):
                 if is_jaccard:
