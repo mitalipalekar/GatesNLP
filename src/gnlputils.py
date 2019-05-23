@@ -1,5 +1,6 @@
 from numpy import dot
 from numpy.linalg import norm
+import json
 
 
 def cosine_similarity(a, b):
@@ -25,4 +26,18 @@ def split_all_data(data, dev_start: float, test_start: float):
     return (data[:int(dev_start * len(data))],
             data[int(dev_start * len(data)): int(test_start * len(data))],
             data[int(test_start * len(data)):])
+
+
+def read_dataset(dataset):
+    f = open(dataset, 'r')
+
+    text = dict()
+    out_citations = dict()
+
+    for line in f:
+        paper = json.loads(line)
+        id = paper['id']
+        text[id] = paper['title'] + ' ' + paper['paperAbstract']
+        out_citations[id] = paper['outCitations']
+    return text, out_citations
 

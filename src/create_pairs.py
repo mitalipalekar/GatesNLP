@@ -1,108 +1,114 @@
 #! /usr/bin/env python3
 import json
 from tqdm import tqdm
+from gnlputils import read_dataset
 import random
 
+TOTAL_PAIRS = 120000
+TRAIN_PERCENT = 0.8
+DEV_PERCENT = 0.1
+TEST_PERCENT = 0.1
+
 SHARED_DIR: str = "/projects/instr/19sp/cse481n/GatesNLP/"
-PAPERS = SHARED_DIR + 'extended_dataset.txt'
-TRAIN = SHARED_DIR + 'supervised_pairs/pairs_train.txt'
-DEV = SHARED_DIR + 'supervised_pairs/pairs_dev.txt'
-TEST = SHARED_DIR + 'supervised_pairs/pairs_test.txt'
+TRAIN: str = SHARED_DIR + 'train.txt'
+DEV: str = SHARED_DIR + 'dev.txt'
+TEST: str = SHARED_DIR + 'test.txt'
+TRAIN_OUTPUT: str = SHARED_DIR + 'supervised_pairs/large_pairs_train.txt'
+DEV_OUTPUT: str = SHARED_DIR + 'supervised_pairs/large_pairs_dev.txt'
+TEST_OUTPUT: str = SHARED_DIR + 'supervised_pairs/large_pairs_test.txt'
+
 
 def main():
-    f = open(PAPERS, 'r')
+    train_text, train_citations = read_dataset(TRAIN)
+    dev_text, dev_citations = read_dataset(DEV)
+    test_text, test_citations = read_dataset(TEST)
 
-    text = dict()
-    outCitations = dict()
+    train_cited = generate_cited_pairs(train_text, train_citations)
+    dev_cited = generate_cited_pairs_across_datasets(dev_text, train_text, dev_citations)
+    test_cited = generate_cited_pairs_across_datasets(test_text, train_text, test_citations)
 
-    for line in f:
-        paper = json.loads(line)
-        id = paper['id']
-        text[id] = paper['title'] + ' ' + paper['paperAbstract']
-        outCitations[id] = paper['outCitations']
+    # take minimum count of cited papers as the number of cited/uncited pairs we are retrieving from the dataset
+    train_cited = random.sample(train_cited, int(TOTAL_PAIRS * TRAIN_PERCENT / 2))
+    dev_cited = random.sample(dev_cited, int(TOTAL_PAIRS * DEV_PERCENT / 2))
+    test_cited = random.sample(test_cited, int(TOTAL_PAIRS * TEST_PERCENT / 2))
 
-    true_citation_count = 60000
-    one_hop_count = 0
-    negative_examples = 60000
+    train_uncited = generate_uncited_pairs(train_text, train_citations, int(TOTAL_PAIRS * TRAIN_PERCENT / 2))
+    dev_uncited = generate_uncited_pairs_across_datasets(dev_text, train_text, dev_citations,
+                                                         int(TOTAL_PAIRS * DEV_PERCENT / 2))
+    test_uncited = generate_uncited_pairs_across_datasets(test_text, train_text, test_citations,
+                                                          int(TOTAL_PAIRS * TEST_PERCENT / 2))
 
-    processed_train = []
-    processed_dev = []
-    processed_test = []
+    write_output(TRAIN_OUTPUT, train_cited + train_uncited)
+    write_output(DEV_OUTPUT, dev_cited + dev_uncited)
+    write_output(TEST_OUTPUT, test_cited + test_uncited)
 
-    # random cited pairs
-    processed = 0
-    ids = list(text.keys())
-    while processed < true_citation_count:
-        paper1 = random.choice(ids)
-        if len(outCitations[paper1]) != 0:
-            paper2 = random.choice(outCitations[paper1])
-            if paper2 in text.keys():
+
+
+
+
+def generate_cited_pairs(text, out_citations):
+    return generate_cited_pairs_across_datasets(text, text, out_citations)
+
+
+def generate_cited_pairs_across_datasets(source_text, dest_text, out_citations):
+    cited_pairs = []
+    for paper1, text1 in source_text.items():
+        for paper2 in out_citations[paper1]:
+            if paper2 in dest_text.keys():
                 result = {}
-                result["query_paper"] = text[paper1]
-                result["candidate_paper"] = text[paper2]
+                result["query_paper"] = source_text[paper1]
+                result["candidate_paper"] = dest_text[paper2]
                 result["relevance"] = "1"
-                if processed < int(0.8 * true_citation_count):
-                    processed_train.append(result)
-                elif processed >= int(0.8 * true_citation_count) and processed < int(0.9 * true_citation_count):
-                    processed_dev.append(result)
-                else:
-                    processed_test.append(result)
-                processed += 1
+                cited_pairs.append(result)
+    return cited_pairs
 
-    processed = 0
 
-    # one-hop pairs
-    while processed < one_hop_count:
+def generate_random_cited_pairs(source_text, dest_text, out_citations, pair_count):
+    cited_pairs = []
+    ids = list(source_text.keys())
+    while len(cited_pairs) < pair_count:
         paper1 = random.choice(ids)
-        if len(outCitations[paper1]) != 0:
-            paper2 = random.choice(outCitations[paper1])
-            if paper2 in text.keys():
-                if len(outCitations[paper2]) != 0:
-                    paper3 = random.choice(outCitations[paper2])
-                    if paper3 in text.keys() and paper3 not in outCitations[paper1]:
-                        result = {}
-                        result["query_paper"] = text[paper1]
-                        result["candidate_paper"] = text[paper3]
-                        result["relevance"] = "0"
-                        if processed < int(0.8 * one_hop_count):
-                            processed_train.append(result)
-                        elif processed >= int(0.8 * one_hop_count) and processed < int(0.9 * one_hop_count):
-                            processed_dev.append(result)
-                        else:
-                            processed_test.append(result)
-                        processed += 1
-
-    # random negatives
-    processed = 0
-    while processed < negative_examples:
-        paper1 = random.choice(ids)
-        count = 0
-        while count < 1:
-            paper2 = random.choice(ids)
-            if paper2 not in outCitations[paper1] and not paper1 == paper2:
+        if len(out_citations[paper1]) != 0:
+            paper2 = random.choice(out_citations[paper1])
+            if paper2 in dest_text.keys():
                 result = {}
-                result["query_paper"] = text[paper1]
-                result["candidate_paper"] = text[paper2]
+                result["query_paper"] = source_text[paper1]
+                result["candidate_paper"] = dest_text[paper2]
+                result["relevance"] = "1"
+                cited_pairs.append(result)
+    return cited_pairs
+
+
+def generate_uncited_pairs(text, out_citations, pair_count):
+    return generate_uncited_pairs_across_datasets(text, text, out_citations, pair_count)
+
+
+def generate_uncited_pairs_across_datasets(source_text, dest_text, out_citations, pair_count):
+    source_ids = list(source_text.keys())
+    dest_ids = list(dest_text.keys())
+    uncited_pairs = []
+    seen = set()
+    while len(uncited_pairs) < pair_count:
+        paper1 = random.choice(source_ids)
+        sampled = False
+        while not sampled:
+            paper2 = random.choice(dest_ids)
+            if paper2 not in out_citations[paper1] and not paper1 == paper2 and (paper1, paper2) not in seen:
+                result = {}
+                result["query_paper"] = source_text[paper1]
+                result["candidate_paper"] = dest_text[paper2]
                 result["relevance"] = "0"
-                if processed < int(0.8 * negative_examples):
-                    processed_train.append(result)
-                elif processed >= int(0.8 * negative_examples) and processed < int(0.9 * negative_examples):
-                    processed_dev.append(result)
-                else:
-                    processed_test.append(result)
-                processed += 1
-                count += 1
+                uncited_pairs.append(result)
+                seen.add((paper1, paper2))
+                sampled = True
+    return uncited_pairs
 
 
-    output_shuffle(open(TRAIN, 'w'), processed_train)
-    output_shuffle(open(DEV, 'w'), processed_dev)
-    output_shuffle(open(TEST, 'w'), processed_test)
-
-
-def output_shuffle(out, outputs):
-    random.shuffle(outputs)
-    for output in outputs:
-        out.write(json.dumps(output) + '\n')
+def write_output(filename, pairs):
+    out = open(filename, 'w')
+    random.shuffle(pairs)
+    for pair in pairs:
+        out.write(json.dumps(pair) + '\n')
 
 
 if __name__ == '__main__':

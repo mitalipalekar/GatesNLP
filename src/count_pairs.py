@@ -2,6 +2,7 @@
 import json
 from tqdm import tqdm
 import random
+from gnlputils import read_dataset
 
 SHARED_DIR: str = "/projects/instr/19sp/cse481n/GatesNLP/"
 TRAIN = SHARED_DIR + 'train.txt'
@@ -9,6 +10,8 @@ DEV = SHARED_DIR + 'dev.txt'
 TEST = SHARED_DIR + 'test.txt'
 
 def main():
+    count_cited_pairs(DEV, TRAIN)
+    count_cited_pairs(TEST, TRAIN)
     count_pairs(TRAIN)
     count_pairs(DEV)
     count_pairs(TEST)
@@ -45,6 +48,21 @@ def count_pairs(filename):
     print(str(total) + " papers")
     print(str(true_citation_count) + " cited pairs")
     print(str(one_hop_count) + " one hop pairs")
+
+
+def count_cited_pairs(filename_source, filename_dest):
+    print(filename_source + " cites " + filename_dest)
+    source_text, out_citations = read_dataset(filename_source)
+    dest_text, _ = read_dataset(filename_dest)
+
+    # counts numbers for train/dev/test split
+    true_citation_count = 0
+    for paper1, text1 in source_text.items():
+        for paper2 in out_citations[paper1]:
+            if paper2 in dest_text.keys():
+                true_citation_count += 1
+
+    print(str(true_citation_count) + " cited pairs")
 
 
 if __name__ == '__main__':
