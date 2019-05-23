@@ -1,6 +1,6 @@
 {
-    "train_data_path": "/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/quadruple_pairs_train.txt",
-    "validation_data_path": "/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/quadruple_pairs_dev.txt",
+    "train_data_path": "/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/large_pairs_train.txt",
+    "validation_data_path": "/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/large_pairs_dev.txt",
 
     "dataset_reader": {
       "type": "pairs_reader",
@@ -34,7 +34,7 @@
           "input_dim": 100,
           "num_layers": 2,
           "hidden_dims": [50, 2],
-          "activations": ["tanh","linear"],
+          "activations": ["sigmoid","linear"],
           "dropout": [0.4, 0.4]
         }
     },
