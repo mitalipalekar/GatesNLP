@@ -24,11 +24,11 @@ MODEL_NAME: str = "relevance_predictor"
 BATCH_SIZE: int = 650
 
 
-def tf_idf_ranking(titles, abstracts):
+def tf_idf_ranking(titles):
     vectorizer = TfidfVectorizer()
     text = []
-    for paper in tqdm(zip(titles, abstracts), desc="Generating TF-IDF matrix"):
-        text.append(paper[0] + " " + paper[1])
+    for paper in tqdm(titles, desc="Generating TF-IDF matrix"):
+        text.append(paper)
 
     return vectorizer.fit_transform(text).toarray()
 
@@ -54,19 +54,19 @@ def main():
     lines.sort(key=lambda x: x['year'])
 
     ids = extract_keys(lines, 'id')
-    abstracts = extract_keys(lines, 'paperAbstract')
+    # abstracts = extract_keys(lines, 'paperAbstract')
     titles = extract_keys(lines, 'title')
     out_citations = extract_keys(lines, 'outCitations')
 
     train_ids, eval_ids = split_data(ids, 0.8, 0.9, is_test)
-    train_abstracts, eval_abstracts = split_data(abstracts, 0.8, 0.9, is_test)
+    # train_abstracts, eval_abstracts = split_data(abstracts, 0.8, 0.9, is_test)
     train_title, eval_title = split_data(titles, 0.8, 0.9, is_test)
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
     # gets the tokens of the training set
-    train_texts = [paper[0] + " " + paper[1] for paper in zip(train_title, train_abstracts)]
-    train_token_rows = [set(get_tokens(tokenizer, paper[0] + " " + paper[1], lemmatize)) for paper in
-                        zip(train_title, train_abstracts)]
+    train_texts = [paper[0]  for paper in zip(train_title)]
+    train_token_rows = [set(get_tokens(tokenizer, paper[0], lemmatize)) for paper in
+                        zip(train_title)]
 
     total_count = 0
     citation_counts = dict()
@@ -81,16 +81,16 @@ def main():
 
     # calculate our evaluation metric
     if is_tfidf:
-        tfidf_matrix = tf_idf_ranking(titles, abstracts)
+        tfidf_matrix = tf_idf_ranking(titles)
     eval_score = []
     matching_citation_count = 0
     min_rank = float("inf")
-    for i, eval_row in tqdm(enumerate(eval_abstracts), desc="Evaluating dev/test set abstracts"):
+    for i, eval_row in tqdm(list(enumerate(eval_title)), desc="Evaluating dev/test set abstracts"):
         out_citations = eval_out_citations[i]
         if len(out_citations) > 0:
             rankings = []
-            eval_text = eval_title[i] + " " + eval_row
-            dev_tokens = set(get_tokens(tokenizer, eval_title[i] + " " + eval_row, lemmatize))
+            eval_text = eval_title[i]
+            dev_tokens = set(get_tokens(tokenizer, eval_title[i], lemmatize))
 
             # rank all the papers in the training set
             if is_allennlp:

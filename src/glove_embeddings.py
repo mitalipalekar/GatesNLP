@@ -1,19 +1,21 @@
 import json
 import sys
 
-from gensim.models import KeyedVectors
-from gensim.scripts.glove2word2vec import glove2word2vec
-from gnlputils import extract_keys, split_data, get_from_rankings
+from gnlputils import cosine_similarity, extract_keys, split_data, get_from_rankings
+import pandas as pd
+import numpy as np
+import csv
 from tqdm import tqdm
 
 GLOVE_INPUT_FILE_PATH = '/projects/instr/19sp/cse481n/GatesNLP/glove.6B.50d.txt'
-WORD2VEC_OUTPUT_FILE = 'glove.6B.50d.txt.word2vec'
+
+
+def vec(words, keys):
+    return words.loc[words.index.intersection(keys)].to_numpy().mean(axis=0).transpose()
 
 
 def glove_embeddings(papers):
-    glove2word2vec(GLOVE_INPUT_FILE_PATH, WORD2VEC_OUTPUT_FILE)
-    model = KeyedVectors.load_word2vec_format(WORD2VEC_OUTPUT_FILE, binary=False)
-
+    words = pd.read_csv(GLOVE_INPUT_FILE_PATH, sep=" ", index_col=0, header=None, quoting=csv.QUOTE_NONE)
     lines = []
     with open(papers, 'rb') as f:
         for line in tqdm(f, desc='Read papers'):
@@ -34,20 +36,17 @@ def glove_embeddings(papers):
     train_titles, eval_titles = split_data(titles, 0.8, 0.9, is_test)
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
-    # NOTE: Make sure to always UNK everything!
     eval_score = []
     matching_citation_count = 1
     min_rank = float("inf")
-    for i, eval_abstract in tqdm(list(enumerate(eval_titles)), desc='generating rankings for evaluation set'):
+    train_abstracts = [vec(words, x.split()) for x in train_abstracts]
+    eval_abstracts = [vec(words, x.split()) for x in eval_abstracts]
+    for i, eval_abstract in tqdm(list(enumerate(eval_abstracts)), desc='Generating rankings for evaluation set'):
         rankings = []
-        eval_split = eval_abstract.lower().split()
-        if len(eval_split):
-            for j, train_abstract in tqdm(list(enumerate(train_titles)), desc='iterating through train titlesg'):
-                train_split = train_abstract.lower().split()
-                if len(train_split):
-                    document_similarity = model.wmdistance(train_split, eval_split)
-                    rankings.append((document_similarity, j))
-        rankings.sort(key=lambda x: x[0])
+        for j, train_abstract in tqdm(list(enumerate(train_abstracts)), desc='Iterating through train titles'):
+            document_similarity = cosine_similarity(eval_abstract, train_abstract)
+            rankings.append((document_similarity, j))
+        rankings.sort(key=lambda x: x[0], reverse=True)
 
         out_citations = eval_out_citations[i]
         if len(out_citations):
@@ -59,8 +58,6 @@ def glove_embeddings(papers):
                 rank = ranking_ids.index(true_citations[0]) + 1
                 min_rank = min(min_rank, rank)
                 eval_score.append(1.0 / rank)
-                print("rank for iteration " + str(i) + ": " + str(rank))
-                print("eval score for iteration " + str(i) + ": " + str(eval_score))
 
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
