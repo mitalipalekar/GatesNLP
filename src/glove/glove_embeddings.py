@@ -48,20 +48,23 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
     train_titles, eval_titles = split_data(titles, 0.8, 0.9, is_test)
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
+    # TODO: changed abstracts to titles
     if cosine_similarity_flag:
-        eval_abstracts = [vec(glove_embeddings, x.split()) for x in tqdm(eval_abstracts, desc='Eval Embeddings')]
-        train_abstracts = [vec(glove_embeddings, x.split()) for x in tqdm(train_abstracts, desc='Train Embeddings')]
-        eval_abstracts = filter(lambda x: np.isfinite(x).all(), eval_abstracts)
-        train_abstracts = filter(lambda x: np.isfinite(x).all(), train_abstracts)
+        train_titles = [vec(glove_embeddings, x.split()) for x in tqdm(train_titles, desc='Train Embeddings')]
+        eval_titles = [vec(glove_embeddings, x.split()) for x in tqdm(eval_titles, desc='Eval Embeddings')]
+        train_titles = filter(lambda x: np.isfinite(x).all(), train_titles)
+        eval_titles = filter(lambda x: np.isfinite(x).all(), eval_titles)
 
     eval_score = []
     matching_citation_count = 1
     min_rank = float("inf")
-    for i, eval_abstract in tqdm(list(enumerate(eval_abstracts[:3])), desc='Generating rankings for evaluation set'):
+    # TODO: changed eval_abstracts -> eval_titles
+    for i, eval_abstract in tqdm(list(enumerate(eval_titles[:3])), desc='Generating rankings for evaluation set'):
         rankings = []
         eval_split = eval_abstract.lower().split()
         if len(eval_split):
-            for j, train_abstract in tqdm(list(enumerate(train_abstracts)), desc='Iterating through train titles'):
+            # TODO: changed train_abstracts -> train_titles
+            for j, train_abstract in tqdm(list(enumerate(train_titles)), desc='Iterating through train titles'):
                 if cosine_similarity_flag:
                     document_similarity = cosine_similarity(eval_abstract, train_abstract)
                 else:
@@ -70,7 +73,10 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
                         document_similarity = model.wmdistance(train_split, eval_split)
                         rankings.append((document_similarity, j))
                 rankings.append((document_similarity, j))
-        rankings.sort(key=lambda x: x[0], reverse=True)
+        if cosine_similarity_flag:
+            rankings.sort(key=lambda x: x[0], reverse=True)
+        else:
+            rankings.sort(key=lambda x: x[0])
 
         out_citations = eval_out_citations[i]
         if len(out_citations):
