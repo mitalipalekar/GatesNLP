@@ -18,8 +18,7 @@ GLOVE_INPUT_FILE_PATH = '/projects/instr/19sp/cse481n/GatesNLP/'
 WORD2VEC_OUTPUT_FILE = 'glove.6B.50d.txt.word2vec'
 
 
-def vec(words, keys, stop_words):
-    keys = [w for w in keys if w not in stop_words]
+def vec(words, keys):
     return words.loc[words.index.intersection(keys)].to_numpy().mean(axis=0).transpose()
 
 
@@ -31,6 +30,7 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
     # For wmdistance
     glove2word2vec(glove_embeddings_file_path, WORD2VEC_OUTPUT_FILE)
     model = KeyedVectors.load_word2vec_format(WORD2VEC_OUTPUT_FILE, binary=False)
+    model.init_sims(replace=True)  # Normalizes the vectors in the word2vec class.
 
     stop_words = stopwords.words('english')
 
@@ -57,8 +57,8 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
 
     # TODO: changed abstracts to titles
     if cosine_similarity_flag:
-        train_titles = [vec(glove_embeddings_data, x.lower().split(), stop_words) for x in tqdm(train_titles, desc='Train Embeddings')]
-        eval_titles = [vec(glove_embeddings_data, x.lower().split(), stop_words) for x in tqdm(eval_titles, desc='Eval Embeddings')]
+        train_titles = [vec(glove_embeddings_data, x.split()) for x in tqdm(train_titles, desc='Train Embeddings')]
+        eval_titles = [vec(glove_embeddings_data, x.split()) for x in tqdm(eval_titles, desc='Eval Embeddings')]
         train_titles = list(filter(lambda x: np.isfinite(x).all(), train_titles))
         eval_titles = list(filter(lambda x: np.isfinite(x).all(), eval_titles))
 
@@ -76,6 +76,9 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
                 else:
                     train_split = train_abstract.lower().split()
                     eval_split = eval_abstract.lower().split()
+                    train_split = [w for w in train_split if w not in stop_words]
+                    eval_split = [w for w in eval_split if w not in stop_words]
+
                     if len(train_split):
                         document_similarity = model.wmdistance(train_split, eval_split)
                         rankings.append((document_similarity, j))
