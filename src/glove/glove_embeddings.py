@@ -66,7 +66,7 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
     matching_citation_count = 1
     min_rank = float("inf")
     # TODO: changed eval_abstracts -> eval_titles
-    for i, eval_abstract in tqdm(list(enumerate(eval_titles[:3])), desc='Generating rankings for evaluation set'):
+    for i, eval_abstract in tqdm(list(enumerate(eval_titles)), desc='Generating rankings for evaluation set'):
         rankings = []
         if len(eval_abstract) > 0:
             # TODO: changed train_abstracts -> train_titles
