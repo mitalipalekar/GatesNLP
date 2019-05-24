@@ -1,5 +1,5 @@
 import json
-import sys
+import argparse
 
 from gnlputils import cosine_similarity, extract_keys, split_data, get_from_rankings
 import pandas as pd
@@ -14,7 +14,7 @@ def vec(words, keys):
     return words.loc[words.index.intersection(keys)].to_numpy().mean(axis=0).transpose()
 
 
-def glove_embeddings(papers):
+def glove_embeddings(papers, cosine_similarity):
     words = pd.read_csv(GLOVE_INPUT_FILE_PATH, sep=" ", index_col=0, header=None, quoting=csv.QUOTE_NONE)
     lines = []
     with open(papers, 'rb') as f:
@@ -68,7 +68,12 @@ def glove_embeddings(papers):
 
 
 def main():
-    glove_embeddings(sys.argv[1])
+    parser = argparse.ArgumentParser(description='Arguments to be passed into the GloVe embeddings.')
+    parser.add_argument('file_path', type=str, help = 'file path of the GloVe vectors')
+    parser.add_argument('--cosine_similarity', action='store_true', help = 'whether we want to use cosine similiarty')
+    args = parser.parse_args()
+
+    glove_embeddings(args.file_path, args.cosine_similarity)
 
 
 if __name__ == '__main__':
