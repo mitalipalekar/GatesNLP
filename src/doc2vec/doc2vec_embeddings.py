@@ -23,6 +23,7 @@ def generate_word_embeddings(papers):
     lines.sort(key=lambda x: x['year'])
 
     ids = extract_keys(lines, 'id')
+    titles = extract_keys(lines, 'title')
     abstracts = extract_keys(lines, 'paperAbstract')
     out_citations = extract_keys(lines, 'outCitations')
 
@@ -31,43 +32,40 @@ def generate_word_embeddings(papers):
 
     train_ids, eval_ids = split_data(ids, 0.8, 0.9, is_test)
     train_abstracts, eval_abstracts = split_data(abstracts, 0.8, 0.9, is_test)
+    train_titles, eval_titles = split_data(titles, 0.8, 0.9, is_test)
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
     dictionary = unk_train(train_abstracts)
     train_docs = create_tagged_doc(train_abstracts, dictionary)
 
-    model = Doc2Vec(dm=1, min_count=1, window=10, size=150, sample=1e-4, negative=10)
+    model = Doc2Vec(workers=11, min_count=5, window=10, size=100, alpha=0.025, iter=20)
     model.build_vocab(train_docs)
-
-    for _ in trange(20):
-        model.train(train_docs, epochs=model.iter, total_examples=model.corpus_count)
+    model.train(train_docs, epochs=model.iter, total_examples=model.corpus_count)
 
     # NOTE: Make sure to always UNK everything!
     eval_score = []
     matching_citation_count = 1
     min_rank = float("inf")
-    for i, eval_abstract in tqdm(enumerate(eval_abstracts[:2]), desc='generating rankings for evaluation set'):
-        rankings = []
-        if len(eval_abstract.split()):
-            for j, train_abstract in tqdm(enumerate(train_abstracts), desc='iterating through train abstracts'):
-                if len(train_abstract.split()):
-                    document_similarity = model.n_similarity(unk_abstract(train_abstract.split(), dictionary),
-                                                             unk_abstract(eval_abstract.split(), dictionary))
-                    rankings.append((document_similarity, j))
-        rankings.sort(key=lambda x: x[0], reverse=True)
 
-        out_citations = eval_out_citations[i]
-        if len(out_citations):
-            # gets the rankings of the training papers in the correct order
-            ranking_ids = get_from_rankings(rankings, train_ids)
-            true_citations = [citation for citation in ranking_ids if citation in out_citations]
-            print(true_citations)
-            if len(true_citations):
-                matching_citation_count += 1
-                rank = ranking_ids.index(true_citations[0]) + 1
-                min_rank = min(min_rank, rank)
-                eval_score.append(1.0 / rank)
-        # break
+    for i, eval_abstract in tqdm(list(enumerate(eval_abstracts[:2])), desc='generating rankings for evaluation set'):
+        eval_split = eval_abstract.lower().split()
+
+        if len(eval_split):
+            eval_doc_vec = model.infer_vector(eval_split, steps=50, alpha=0.25)
+            rankings = model.docvecs.most_similar(positive=[eval_doc_vec])
+            rankings = [(score, int(index)) for index, score in rankings]
+
+            out_citations = eval_out_citations[i]
+            if len(out_citations):
+                # gets the rankings of the training papers in the correct order
+                ranking_ids = get_from_rankings(rankings, train_ids)
+                true_citations = [citation for citation in ranking_ids if citation in out_citations]
+
+                if len(true_citations):
+                    matching_citation_count += 1
+                    rank = ranking_ids.index(true_citations[0]) + 1
+                    min_rank = min(min_rank, rank)
+                    eval_score.append(1.0 / rank)
 
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
@@ -80,13 +78,7 @@ def create_tagged_doc(abstracts: [str], dictionary):
 
 
 def unk_abstract(abstract, dictionary):
-    unked_abstract = []
-    for word in abstract:
-        if word in dictionary:
-            unked_abstract.append(word)
-        else:
-            unked_abstract.append("UNK")
-    return unked_abstract
+    return [word if word in dictionary else 'UNK' for word in abstract]
 
 
 def unk_train(train_abstracts):
@@ -94,19 +86,18 @@ def unk_train(train_abstracts):
     for abstract in train_abstracts:
         for word in abstract.split():
             if word in word_counts:
-                word_counts[word] = word_counts.get(word) + 1;
+                word_counts[word] = word_counts.get(word) + 1
             else:
-                word_counts[word] = 1;
+                word_counts[word] = 1
 
     return generate_dictionary(word_counts)
 
 
 def generate_dictionary(word_counts):
-    dictionary = []
+    dictionary = {'UNK'}
     for key, value in word_counts.items():
         if value > UNK_THRESHOLD:
-            dictionary.append(key)
-    dictionary.append("UNK")
+            dictionary.add(key)
     return dictionary
 
 
