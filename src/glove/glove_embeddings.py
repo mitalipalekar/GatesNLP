@@ -21,7 +21,7 @@ def vec(words, keys):
 def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
     # For cosine similarity
     glove_embeddings_file_path = GLOVE_INPUT_FILE_PATH + embeddings_file_name;
-    glove_embeddings = pd.read_csv(glove_embeddings_file_path, sep=" ", index_col=0, header=None, quoting=csv.QUOTE_NONE)
+    glove_embeddings_data = pd.read_csv(glove_embeddings_file_path, sep=" ", index_col=0, header=None, quoting=csv.QUOTE_NONE)
 
     # For wmdistance
     glove2word2vec(glove_embeddings_file_path, WORD2VEC_OUTPUT_FILE)
@@ -50,10 +50,10 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
 
     # TODO: changed abstracts to titles
     if cosine_similarity_flag:
-        train_titles = [vec(glove_embeddings, x.split()) for x in tqdm(train_titles, desc='Train Embeddings')]
-        eval_titles = [vec(glove_embeddings, x.split()) for x in tqdm(eval_titles, desc='Eval Embeddings')]
-        train_titles = filter(lambda x: np.isfinite(x).all(), train_titles)
-        eval_titles = filter(lambda x: np.isfinite(x).all(), eval_titles)
+        train_titles = [vec(glove_embeddings_data, x.split()) for x in tqdm(train_titles, desc='Train Embeddings')]
+        eval_titles = [vec(glove_embeddings_data, x.split()) for x in tqdm(eval_titles, desc='Eval Embeddings')]
+        train_titles = list(filter(lambda x: np.isfinite(x).all(), train_titles))
+        eval_titles = list(filter(lambda x: np.isfinite(x).all(), eval_titles))
 
     eval_score = []
     matching_citation_count = 1
@@ -61,14 +61,14 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
     # TODO: changed eval_abstracts -> eval_titles
     for i, eval_abstract in tqdm(list(enumerate(eval_titles[:3])), desc='Generating rankings for evaluation set'):
         rankings = []
-        eval_split = eval_abstract.lower().split()
-        if len(eval_split):
+        if len(eval_abstract) > 0:
             # TODO: changed train_abstracts -> train_titles
             for j, train_abstract in tqdm(list(enumerate(train_titles)), desc='Iterating through train titles'):
                 if cosine_similarity_flag:
                     document_similarity = cosine_similarity(eval_abstract, train_abstract)
                 else:
                     train_split = train_abstract.lower().split()
+                    eval_split = eval_abstract.lower().split()
                     if len(train_split):
                         document_similarity = model.wmdistance(train_split, eval_split)
                         rankings.append((document_similarity, j))
