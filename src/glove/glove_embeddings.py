@@ -1,24 +1,36 @@
 import json
 import argparse
 
-from gnlputils import cosine_similarity, extract_keys, split_data, get_from_rankings
+from gensim.models import KeyedVectors
+from gensim.scripts.glove2word2vec import glove2word2vec
+
+from src.gnlputils import cosine_similarity, extract_keys, split_data, get_from_rankings
 import pandas as pd
 import numpy as np
 import csv
 from tqdm import tqdm
 
-GLOVE_INPUT_FILE_PATH = '/projects/instr/19sp/cse481n/GatesNLP/glove.6B.50d.txt'
+GLOVE_INPUT_FILE_PATH = '/projects/instr/19sp/cse481n/GatesNLP/'
+WORD2VEC_OUTPUT_FILE = 'glove.6B.50d.txt.word2vec'
 
 
 def vec(words, keys):
     return words.loc[words.index.intersection(keys)].to_numpy().mean(axis=0).transpose()
 
 
-def glove_embeddings(papers, cosine_similarity):
-    words = pd.read_csv(GLOVE_INPUT_FILE_PATH, sep=" ", index_col=0, header=None, quoting=csv.QUOTE_NONE)
+def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
+    # For cosine similarity
+    glove_embeddings_file_path = GLOVE_INPUT_FILE_PATH + embeddings_file_name;
+    glove_embeddings = pd.read_csv(glove_embeddings_file_path, sep=" ", index_col=0, header=None, quoting=csv.QUOTE_NONE)
+
+    # For wmdistance
+    glove2word2vec(glove_embeddings_file_path, WORD2VEC_OUTPUT_FILE)
+    model = KeyedVectors.load_word2vec_format(WORD2VEC_OUTPUT_FILE, binary=False)
+
     lines = []
-    with open(papers, 'rb') as f:
-        for line in tqdm(f, desc='Read papers'):
+    dataset_file_path = GLOVE_INPUT_FILE_PATH + papers
+    with open(dataset_file_path, 'rb') as f:
+        for line in tqdm(f, desc='Reading papers'):
             lines.append(json.loads(line))
 
     lines.sort(key=lambda x: x['year'])
@@ -36,18 +48,28 @@ def glove_embeddings(papers, cosine_similarity):
     train_titles, eval_titles = split_data(titles, 0.8, 0.9, is_test)
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
+    if cosine_similarity_flag:
+        eval_abstracts = [vec(glove_embeddings, x.split()) for x in tqdm(eval_abstracts, desc='Eval Embeddings')]
+        train_abstracts = [vec(glove_embeddings, x.split()) for x in tqdm(train_abstracts, desc='Train Embeddings')]
+        eval_abstracts = filter(lambda x: np.isfinite(x).all(), eval_abstracts)
+        train_abstracts = filter(lambda x: np.isfinite(x).all(), train_abstracts)
+
     eval_score = []
     matching_citation_count = 1
     min_rank = float("inf")
-    eval_abstracts = [vec(words, x.split()) for x in tqdm(eval_abstracts, desc='Eval Embeddings')]
-    train_abstracts = [vec(words, x.split()) for x in tqdm(train_abstracts, desc='Train Embeddings')]
-    eval_abstracts = filter(lambda x: np.isfinite(x).all(), eval_abstracts)
-    train_abstracts = filter(lambda x: np.isfinite(x).all(), train_abstracts)
-    for i, eval_abstract in tqdm(list(enumerate(eval_abstracts)), desc='Generating rankings for evaluation set'):
+    for i, eval_abstract in tqdm(list(enumerate(eval_abstracts[:3])), desc='Generating rankings for evaluation set'):
         rankings = []
-        for j, train_abstract in tqdm(list(enumerate(train_abstracts)), desc='Iterating through train titles'):
-            document_similarity = cosine_similarity(eval_abstract, train_abstract)
-            rankings.append((document_similarity, j))
+        eval_split = eval_abstract.lower().split()
+        if len(eval_split):
+            for j, train_abstract in tqdm(list(enumerate(train_abstracts)), desc='Iterating through train titles'):
+                if cosine_similarity_flag:
+                    document_similarity = cosine_similarity(eval_abstract, train_abstract)
+                else:
+                    train_split = train_abstract.lower().split()
+                    if len(train_split):
+                        document_similarity = model.wmdistance(train_split, eval_split)
+                        rankings.append((document_similarity, j))
+                rankings.append((document_similarity, j))
         rankings.sort(key=lambda x: x[0], reverse=True)
 
         out_citations = eval_out_citations[i]
@@ -69,11 +91,12 @@ def glove_embeddings(papers, cosine_similarity):
 
 def main():
     parser = argparse.ArgumentParser(description='Arguments to be passed into the GloVe embeddings.')
-    parser.add_argument('file_path', type=str, help = 'file path of the GloVe vectors')
-    parser.add_argument('--cosine_similarity', action='store_true', help = 'whether we want to use cosine similiarty')
+    parser.add_argument('embeddings_file_name', type=str, help = 'file name of the GloVe vectors')
+    parser.add_argument('dataset_file_name', type=str, help='file name of the dataset')
+    parser.add_argument('--cosine_similarity_flag', action='store_true', help = 'whether we want to use cosine similiarty')
     args = parser.parse_args()
 
-    glove_embeddings(args.file_path, args.cosine_similarity)
+    glove_embeddings(args.embeddings_file_name, args.dataset_file_name, args.cosine_similarity_flag)
 
 
 if __name__ == '__main__':
