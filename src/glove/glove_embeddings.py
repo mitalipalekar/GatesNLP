@@ -4,7 +4,12 @@ import argparse
 from gensim.models import KeyedVectors
 from gensim.scripts.glove2word2vec import glove2word2vec
 
-from src.gnlputils import cosine_similarity, extract_keys, split_data, get_from_rankings
+import os,sys,inspect
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
+from gnlputils import cosine_similarity, extract_keys, split_data, get_from_rankings
+
 import pandas as pd
 import numpy as np
 import csv
@@ -98,6 +103,7 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
                 rank = ranking_ids.index(true_citations[0]) + 1
                 min_rank = min(min_rank, rank)
                 eval_score.append(1.0 / rank)
+                print("\nEval Score for iteration " + str(i) + ": " + str(1.0 / rank) + "\n")
 
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
