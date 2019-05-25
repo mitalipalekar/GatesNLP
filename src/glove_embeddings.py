@@ -39,8 +39,10 @@ def glove_embeddings(papers):
     eval_score = []
     matching_citation_count = 1
     min_rank = float("inf")
-    train_abstracts = [vec(words, x.split()) for x in train_abstracts]
-    eval_abstracts = [vec(words, x.split()) for x in eval_abstracts]
+    eval_abstracts = [vec(words, x.split()) for x in tqdm(eval_abstracts, desc='Eval Embeddings')]
+    train_abstracts = [vec(words, x.split()) for x in tqdm(train_abstracts, desc='Train Embeddings')]
+    eval_abstracts = filter(lambda x: np.isfinite(x).all(), eval_abstracts)
+    train_abstracts = filter(lambda x: np.isfinite(x).all(), train_abstracts)
     for i, eval_abstract in tqdm(list(enumerate(eval_abstracts)), desc='Generating rankings for evaluation set'):
         rankings = []
         for j, train_abstract in tqdm(list(enumerate(train_abstracts)), desc='Iterating through train titles'):
