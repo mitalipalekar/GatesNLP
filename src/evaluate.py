@@ -24,12 +24,8 @@ MODEL_NAME: str = "relevance_predictor"
 BATCH_SIZE: int = 650
 
 
-def tf_idf_ranking(titles):
+def create_tf_idf_matrix(text):
     vectorizer = TfidfVectorizer()
-    text = []
-    for paper in tqdm(titles, desc="Generating TF-IDF matrix"):
-        text.append(paper)
-
     return vectorizer.fit_transform(text).toarray()
 
 
@@ -40,11 +36,16 @@ def main():
     is_jaccard = len(sys.argv) > 1 and sys.argv[1] == "j"
     is_allennlp = len(sys.argv) > 1 and sys.argv[1] == "a"
     is_tfidf = len(sys.argv) > 1 and sys.argv[1] == "t"
-    is_test = len(sys.argv) > 2 and sys.argv[2] == "test"
-    lemmatize = len(sys.argv) > 3 and sys.argv[3] == "1"
 
-    archive = load_archive(MODEL, cuda_device=GPU)
-    predictor = Predictor.from_archive(archive, MODEL_NAME)
+    use_titles = len(sys.argv) > 2 and sys.argv[2] == "title"
+    use_abstracts = len(sys.argv) > 2 and sys.argv[2] == "abstract"
+
+    is_test = len(sys.argv) > 3 and sys.argv[3] == "test"
+    lemmatize = len(sys.argv) > 4 and sys.argv[4] == "1"
+
+    if is_allennlp:
+        archive = load_archive(MODEL, cuda_device=GPU)
+        predictor = Predictor.from_archive(archive, MODEL_NAME)
 
     lines = []
     with open(PAPERS, 'rb') as f:
@@ -54,19 +55,21 @@ def main():
     lines.sort(key=lambda x: x['year'])
 
     ids = extract_keys(lines, 'id')
-    # abstracts = extract_keys(lines, 'paperAbstract')
-    titles = extract_keys(lines, 'title')
+    if use_abstracts:
+        text = extract_keys(lines, 'paperAbstract')
+    elif use_titles:
+        text = extract_keys(lines, 'title')
+    else:
+        text = [paper[0] + " " + paper[1] for paper
+                in zip(extract_keys(lines, 'title'), extract_keys(lines, 'paperAbstract'))]
     out_citations = extract_keys(lines, 'outCitations')
 
     train_ids, eval_ids = split_data(ids, 0.8, 0.9, is_test)
-    # train_abstracts, eval_abstracts = split_data(abstracts, 0.8, 0.9, is_test)
-    train_title, eval_title = split_data(titles, 0.8, 0.9, is_test)
+    train_texts, eval_texts = split_data(text, 0.8, 0.9, is_test)
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
     # gets the tokens of the training set
-    train_texts = [paper[0]  for paper in zip(train_title)]
-    train_token_rows = [set(get_tokens(tokenizer, paper[0], lemmatize)) for paper in
-                        zip(train_title)]
+    train_token_rows = [set(get_tokens(tokenizer, paper, lemmatize)) for paper in train_texts]
 
     total_count = 0
     citation_counts = dict()
@@ -81,16 +84,14 @@ def main():
 
     # calculate our evaluation metric
     if is_tfidf:
-        tfidf_matrix = tf_idf_ranking(titles)
+        tfidf_matrix = create_tf_idf_matrix(text)
     eval_score = []
     matching_citation_count = 0
     min_rank = float("inf")
-    for i, eval_row in tqdm(list(enumerate(eval_title)), desc="Evaluating dev/test set abstracts"):
+    for i, eval_text in tqdm(list(enumerate(eval_texts)), desc="Evaluating dev/test set"):
         out_citations = eval_out_citations[i]
         if len(out_citations) > 0:
             rankings = []
-            eval_text = eval_title[i]
-            dev_tokens = set(get_tokens(tokenizer, eval_title[i], lemmatize))
 
             # rank all the papers in the training set
             if is_allennlp:
@@ -101,7 +102,8 @@ def main():
                     scores.extend(predictor.predict_batch_json(batch))
             for train_index, train_tokens in enumerate(train_token_rows):
                 if is_jaccard:
-                    score = jaccard_similarity(dev_tokens, train_tokens)
+                    eval_tokens = set(get_tokens(tokenizer, eval_text, lemmatize))
+                    score = jaccard_similarity(eval_tokens, train_tokens)
                 elif is_allennlp:
                     score = scores[train_index]['class_probabilities'][1]
                 elif is_tfidf:
