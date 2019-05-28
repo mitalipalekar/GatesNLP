@@ -4,7 +4,10 @@ from tqdm import tqdm
 from gnlputils import read_dataset
 import random
 
-TOTAL_PAIRS = 120000
+CITED_PAIRS = 60000
+ONE_HOP = 0
+UNCITED_PAIRS = 60000
+
 TRAIN_PERCENT = 0.8
 DEV_PERCENT = 0.1
 TEST_PERCENT = 0.1
@@ -27,20 +30,48 @@ def main():
     dev_cited = generate_cited_pairs_across_datasets(dev_text, train_text, dev_citations)
     test_cited = generate_cited_pairs_across_datasets(test_text, train_text, test_citations)
 
-    # take minimum count of cited papers as the number of cited/uncited pairs we are retrieving from the dataset
-    train_cited = random.sample(train_cited, int(TOTAL_PAIRS * TRAIN_PERCENT / 2))
-    dev_cited = random.sample(dev_cited, int(TOTAL_PAIRS * DEV_PERCENT / 2))
-    test_cited = random.sample(test_cited, int(TOTAL_PAIRS * TEST_PERCENT / 2))
+    train_cited = random.sample(train_cited, int(CITED_PAIRS * TRAIN_PERCENT))
+    dev_cited = random.sample(dev_cited, int(CITED_PAIRS * DEV_PERCENT))
+    test_cited = random.sample(test_cited, int(CITED_PAIRS * TEST_PERCENT))
 
-    train_uncited = generate_uncited_pairs(train_text, train_citations, int(TOTAL_PAIRS * TRAIN_PERCENT / 2))
+    train_hops = random.sample(generate_one_hops(train_text, train_citations), int(ONE_HOP * TRAIN_PERCENT))
+    dev_hops = random.sample(generate_one_hops_across_datasets(dev_text, train_text, dev_citations, train_citations),
+                             int(ONE_HOP * DEV_PERCENT))
+    test_hops = random.sample(generate_one_hops_across_datasets(test_text, train_text, test_citations, train_citations),
+                              int(ONE_HOP * TEST_PERCENT))
+
+    train_uncited = generate_uncited_pairs(train_text, train_citations, int(UNCITED_PAIRS * TRAIN_PERCENT))
     dev_uncited = generate_uncited_pairs_across_datasets(dev_text, train_text, dev_citations,
-                                                         int(TOTAL_PAIRS * DEV_PERCENT / 2))
+                                                         int(UNCITED_PAIRS * DEV_PERCENT))
     test_uncited = generate_uncited_pairs_across_datasets(test_text, train_text, test_citations,
-                                                          int(TOTAL_PAIRS * TEST_PERCENT / 2))
+                                                          int(UNCITED_PAIRS * TEST_PERCENT))
 
-    write_output(TRAIN_OUTPUT, train_cited + train_uncited)
-    write_output(DEV_OUTPUT, dev_cited + dev_uncited)
-    write_output(TEST_OUTPUT, test_cited + test_uncited)
+    write_output(TRAIN_OUTPUT, train_cited + train_hops + train_uncited)
+    write_output(DEV_OUTPUT, dev_cited + dev_hops + dev_uncited)
+    write_output(TEST_OUTPUT, test_cited + test_hops + test_uncited)
+
+
+def generate_one_hops(text, out_citations):
+    return generate_one_hops_across_datasets(text, text, out_citations, out_citations)
+
+
+def generate_one_hops_across_datasets(source_text, dest_text, source_out_citations, dest_out_citations):
+    one_hops = []
+    for paper1 in source_text.keys():
+        for paper2 in source_out_citations[paper1]:
+            if paper2 in dest_text.keys():
+                for paper3 in dest_out_citations[paper2]:
+                    if paper3 in source_text.keys():
+                        paper3_text = source_text[paper3]
+                    elif paper3 in dest_text.keys():
+                        paper3_text = dest_text[paper3]
+                    if (paper3 in source_text.keys() or paper3 in dest_text.keys()) and paper3 not in source_out_citations[paper1]:
+                        result = {}
+                        result["query_paper"] = source_text[paper1]
+                        result["candidate_paper"] = paper3_text
+                        result["relevance"] = "0"
+                        one_hops.append(result)
+    return one_hops
 
 
 def generate_cited_pairs(text, out_citations):
