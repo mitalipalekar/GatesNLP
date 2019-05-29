@@ -3,13 +3,17 @@ import pickle
 import sys
 
 import torch
-from gnlputils import extract_keys, split_data, cosine_similarity
-from gnlputils import get_from_rankings
+import os,sys,inspect
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
+from gnlputils import extract_keys, split_data, cosine_similarity, get_from_rankings
+
 from pytorch_pretrained_bert import BertTokenizer, BertModel
 from tqdm import tqdm
 
-WORD_EMBEDDINGS_TRAIN = 'complete_bert_embeddings_train_fix_bugs.pk'
-WORD_EMBEDDINGS_EVAL = 'complete_bert_embeddings_eval_fix_bugs.pk'
+WORD_EMBEDDINGS_TRAIN = 'complete_bert_embeddings_train_titles.pk'
+WORD_EMBEDDINGS_EVAL = 'complete_bert_embeddings_eval_titles.pk'
 
 
 def take_mean_bert(vector):
@@ -58,25 +62,26 @@ def generate_word_embeddings(papers):
 
     train_ids, eval_ids = split_data(ids, 0.8, 0.9, is_test)
     train_abstracts, eval_abstracts = split_data(abstracts, 0.8, 0.9, is_test)
-    train_title, eval_title = split_data(titles, 0.8, 0.9, is_test)
+    train_titles, eval_titles = split_data(titles, 0.8, 0.9, is_test)
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
-
-    eval_score = []
-    matching_citation_count = 1
-    min_rank = float("inf")
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     model = BertModel.from_pretrained('bert-base-uncased')
     model.eval()
 
-    for abstract in tqdm(train_abstracts, desc='Extracting embeddings for training set'):
+    eval_score = []
+    matching_citation_count = 1
+    min_rank = float("inf")
+    # TODO: changing train_abstracts -> train_titles
+    for abstract in tqdm(train_titles, desc='Extracting embeddings for training set'):
         with open(WORD_EMBEDDINGS_TRAIN, 'ab') as handle:
             if abstract:
                 abstract = abstract.lower()
                 word_embedding = take_mean_bert(bert(abstract, tokenizer, model))
                 pickle.dump(word_embedding, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    for i, abstract in tqdm(enumerate(eval_abstracts), desc='Extracting embeddings for evaluation set'):
+    # TODO: changing eval_titles -> eval_titles
+    for i, abstract in tqdm(enumerate(eval_titles[:2]), desc='Extracting embeddings for evaluation set'):
         if abstract:
             abstract = abstract.lower()
             word_embedding_eval = take_mean_bert(bert(abstract, tokenizer, model))
