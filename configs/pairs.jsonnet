@@ -32,7 +32,7 @@
           "bidirectional": true
         },
         "classifier_feedforward": {
-          "input_dim": 100,
+          "input_dim": 200,
           "num_layers": 2,
           "hidden_dims": [50, 2],
           "activations": ["sigmoid","linear"],
