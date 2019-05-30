@@ -17,11 +17,9 @@ logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 class PairsDatasetReader(DatasetReader):
     def __init__(self,
                  source_language: str = 'en_core_web_sm',
-                 token_indexers: Dict[str, TokenIndexer] = None,
-                 max_sequence_length: int = None) -> None:
+                 token_indexers: Dict[str, TokenIndexer] = None) -> None:
         super().__init__()
         self._tokenizer = SpacyWordSplitter(language=source_language)
-        self._max_sequence_length = max_sequence_length
         self._token_indexers = token_indexers or {'tokens': SingleIdTokenIndexer()}
 
     @overrides
@@ -39,14 +37,6 @@ class PairsDatasetReader(DatasetReader):
                 instance = self.text_to_instance(query_paper=query_paper, candidate_paper=candidate_paper, relevance=relevance)
                 if instance is not None:
                     yield instance
-
-    def _truncate(self, tokens):
-        """
-        truncate a set of tokens using the provided sequence length
-        """
-        if len(tokens) > self._max_sequence_length:
-            tokens = tokens[:self._max_sequence_length]
-        return tokens
 
     @overrides
     def text_to_instance(self, query_paper: str, candidate_paper: str, relevance: str = None) -> Instance:  # type: ignore

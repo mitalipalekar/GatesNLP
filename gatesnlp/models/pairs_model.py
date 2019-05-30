@@ -94,7 +94,7 @@ class RelevanceModel(Model):
         text_candidate_mask = util.get_text_field_mask(candidate_paper)
         encoded_candidate_tokens = self.encoder(embedded_candidate_tokens, text_candidate_mask)
 
-        logits = self.classifier_feedforward(encoded_query_tokens + encoded_candidate_tokens)
+        logits = self.classifier_feedforward(torch.cat([encoded_query_tokens, encoded_candidate_tokens]))
         output_dict = {'logits': logits}
         if label is not None:
             loss = self.loss(logits, label)

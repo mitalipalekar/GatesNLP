@@ -6,7 +6,8 @@
       "type": "pairs_reader",
       "token_indexers": {
         "tokens": {
-          "type": "single_id"
+          "type": "single_id",
+          "lowercase_tokens": true
         }
       }
     },
@@ -47,7 +48,7 @@
         "num_serialized_models_to_keep": 2,
         "num_epochs": 40,
         "patience": 10,
-        "cuda_device": 0
+        "cuda_device": 1
     }
 
 }
