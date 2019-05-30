@@ -44,13 +44,9 @@ class PairsDatasetReader(DatasetReader):
         fields: Dict[str, Field] = {}
 
         query_tokens = self._tokenizer.split_words(query_paper)
-        if self._max_sequence_length is not None:
-            query_tokens = self._truncate(query_tokens)
         fields['query_paper'] = TextField(query_tokens, self._token_indexers)
 
         candidate_tokens = self._tokenizer.split_words(candidate_paper)
-        if self._max_sequence_length is not None:
-            candidate_tokens = self._truncate(candidate_tokens)
         fields['candidate_paper'] = TextField(candidate_tokens, self._token_indexers)
 
         if relevance is not None:
