@@ -27,7 +27,7 @@ def vec(words, keys):
     return words.loc[words.index.intersection(keys)].to_numpy().mean(axis=0).transpose()
 
 
-def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
+def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag, print_titles_flag):
     # For cosine similarity
     glove_embeddings_file_path = GLOVE_INPUT_FILE_PATH + embeddings_file_name;
     glove_embeddings_data = pd.read_csv(glove_embeddings_file_path, sep=" ", index_col=0, header=None, quoting=csv.QUOTE_NONE)
@@ -61,7 +61,7 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
     # get file to write titles too
-    f = open("error_analysis_debug.txt", "w")
+    f = open("error_analysis.txt", "w")
     f.write("test title, top-10 similar papers\n")
 
     # TODO: changed abstracts to titles
@@ -75,7 +75,7 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
     matching_citation_count = 1
     min_rank = float("inf")
     # TODO: changed eval_abstracts -> eval_titles
-    for i, eval_abstract in tqdm(list(enumerate(eval_titles)), desc='Generating rankings for evaluation set'):
+    for i, eval_abstract in tqdm(list(enumerate(eval_titles[:20])), desc='Generating rankings for evaluation set'):
         rankings = []
         if len(eval_abstract) > 0:
             # TODO: changed train_abstracts -> train_titles
@@ -90,7 +90,6 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
 
                     if len(train_split):
                         document_similarity = model.wmdistance(train_split, eval_split)
-                        rankings.append((document_similarity, j))
                 rankings.append((document_similarity, j))
             if cosine_similarity_flag:
                 rankings.sort(key=lambda x: x[0], reverse=True)
@@ -110,9 +109,10 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
                     print("\nEval Score for iteration " + str(i) + ": " + str(1.0 / rank) + "\n")
 
                 # PRINT TOP 10 TITLES PER TEST PAPER
-                paper_titles = get_relevant_titles(rankings[:10], train_titles)
-                print(paper_titles)
-                f.write(eval_titles[i] + " " + str(1.0 / rank) + "\n " + ','.join(list(paper_titles)) + "\n\n")
+                if print_titles_flag:
+                    paper_titles = get_relevant_titles(rankings[:10], train_titles)
+                    print(paper_titles)
+                    f.write(str(eval_titles[i]) + ": " + str(1.0 / rank) + "\n " + ','.join(list(paper_titles)) + "\n\n")
 
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
@@ -125,11 +125,11 @@ def main():
     parser.add_argument('embeddings_file_name', type=str, help = 'file name of the GloVe vectors')
     parser.add_argument('dataset_file_name', type=str, help='file name of the dataset')
     parser.add_argument('--cosine_similarity_flag', action='store_true', help = 'whether we want to use cosine similiarty')
-    parser.add_argument('--print_titles', action='store_true',
+    parser.add_argument('--print_titles_flag', action='store_true',
                         help='whether to print the top 10 titles')
     args = parser.parse_args()
 
-    glove_embeddings(args.embeddings_file_name, args.dataset_file_name, args.cosine_similarity_flag)
+    glove_embeddings(args.embeddings_file_name, args.dataset_file_name, args.cosine_similarity_flag, args.print_titles_flag)
 
 
 if __name__ == '__main__':
