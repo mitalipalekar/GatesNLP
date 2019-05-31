@@ -1,7 +1,9 @@
 from numpy import dot
 from numpy.linalg import norm
 import json
+from allennlp.data.tokenizers.word_splitter import SpacyWordSplitter
 
+tokenizer = SpacyWordSplitter(language='en_core_web_sm', keep_spacy_tokens=True)
 
 def cosine_similarity(a, b):
     return dot(a, b) / (norm(a) * norm(b))
@@ -42,5 +44,9 @@ def read_dataset(dataset):
         out_citations[id] = paper['outCitations']
     return text, out_citations
 
+
 def get_relevant_titles(rankings, train_title):
     return [train_title[index] for _, index in rankings]
+
+def tokenize(text):
+    return " ".join([token.text for token in tokenizer.split_words(text)])

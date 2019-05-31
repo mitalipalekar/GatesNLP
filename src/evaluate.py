@@ -6,38 +6,28 @@ import json
 import sys
 from typing import Set
 
-import spacy
 from sklearn.feature_extraction.text import TfidfVectorizer
-from spacy.lang.en import English
 from tqdm import tqdm
+from pathlib import Path
 
-from allennlp.models.archival import load_archive
-from allennlp.predictors import Predictor
-from gatesnlp.models import pairs_model
-from gatesnlp.dataset_readers import pairs_reader
-from gatesnlp.predictors import predictor
-
-from gnlputils import cosine_similarity, extract_keys, get_from_rankings, split_data
+from gnlputils import cosine_similarity, get_from_rankings
 
 # configurations
+GPU: int = 1
+MODEL: str = 'tokenized'
 
-GPU: int = -1
-PAPERS: str = "/projects/instr/19sp/cse481n/GatesNLP/extended_dataset.txt"
-MODEL: str = "/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/quadruple/model.tar.gz"
-MODEL_NAME: str = "relevance_predictor"
+SHARED_DIR = "/projects/instr/19sp/cse481n/GatesNLP/"
+TRAIN: str = SHARED_DIR + "train.txt"
+DEV: str = SHARED_DIR + "dev.txt"
+TEST: str = SHARED_DIR + "test.txt"
+MODEL_PATH: str = "/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/" + MODEL + "/model.tar.gz"
+RANKING_OUTPUT = "/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/rankings_" + MODEL + ".txt"
+ALLENNLP_MODEL_NAME: str = "relevance_predictor"
+
 BATCH_SIZE: int = 650
 
 
-def create_tf_idf_matrix(text):
-    vectorizer = TfidfVectorizer()
-    return vectorizer.fit_transform(text).toarray()
-
-
 def main():
-    # create SpaCy tokenizer
-    nlp = spacy.load("en_core_web_sm")
-    tokenizer = English().Defaults.create_tokenizer(nlp)
-
     # read command line arguments
     is_jaccard = len(sys.argv) > 1 and sys.argv[1] == "j"
     is_allennlp = len(sys.argv) > 1 and sys.argv[1] == "a"
@@ -47,35 +37,13 @@ def main():
     use_abstracts = len(sys.argv) > 2 and sys.argv[2] == "abstract"
 
     is_test = len(sys.argv) > 3 and sys.argv[3] == "test"
-    lemmatize = len(sys.argv) > 4 and sys.argv[4] == "1"
 
-    # read in data
-    lines = []
-    with open(PAPERS, 'rb') as f:
-        for line in f:
-            lines.append(json.loads(line))
-
-    # sort it by year before splitting to frame the task more as a prediction task
-    lines.sort(key=lambda x: x['year'])
-
-    # extract the needed fields from the data
-    ids = extract_keys(lines, 'id')
-    if use_abstracts:
-        text = extract_keys(lines, 'paperAbstract')
-    elif use_titles:
-        text = extract_keys(lines, 'title')
-    else:
-        text = [paper[0] + " " + paper[1] for paper
-                in zip(extract_keys(lines, 'title'), extract_keys(lines, 'paperAbstract'))]
-    out_citations = extract_keys(lines, 'outCitations')
-
-    # split each field into train and some evaluation set (either dev or test)
-    train_ids, eval_ids = split_data(ids, 0.8, 0.9, is_test)
-    train_texts, eval_texts = split_data(text, 0.8, 0.9, is_test)
-    train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
+    # read in train, dev, and test
+    train_ids, train_texts, train_out_citations = get_dataset_fields(TRAIN, use_titles, use_abstracts)
+    eval_ids, eval_texts, eval_out_citations = get_dataset_fields(TEST if is_test else DEV, use_titles, use_abstracts)
 
     # gets the tokens of the training set
-    train_token_rows = [set(get_tokens(tokenizer, paper, lemmatize)) for paper in train_texts]
+    train_tokens = [set(paper.split()) for paper in train_texts]
 
     # calculate statistics on number of papers and citations
     total_count = 0
@@ -85,17 +53,28 @@ def main():
         total_count += count
         citation_counts[i] = count
 
-    # TODO: clean this debugging/analysis code
-    # f = open("titles_similar_dataset_final.txt", "w", encoding="utf-8")
-    # f.write("test title, top-10 similar papers\n")
+    output_path = Path(RANKING_OUTPUT)
+    if output_path.is_file():
+        print("Warning: output file will not be written since it already exists")
+        ranking_output = None
+    else:
+        ranking_output = open(RANKING_OUTPUT, "w")
 
     # prepare model-specific objects
     if is_tfidf:
-        tfidf_matrix = create_tf_idf_matrix(text)
+        vectorizer = TfidfVectorizer()
+        train_tfidf = vectorizer.fit_transform(train_texts).toarray()
+        eval_tfidf = vectorizer.transform(eval_texts).toarray()
 
     if is_allennlp:
-        archive = load_archive(MODEL, cuda_device=GPU)
-        predictor = Predictor.from_archive(archive, MODEL_NAME)
+        from allennlp.models.archival import load_archive
+        from allennlp.predictors import Predictor
+        from gatesnlp.models import pairs_model
+        from gatesnlp.dataset_readers import pairs_reader
+        from gatesnlp.predictors import predictor
+
+        archive = load_archive(MODEL_PATH, cuda_device=GPU)
+        predictor = Predictor.from_archive(archive, ALLENNLP_MODEL_NAME)
 
     # keep track of each reciprocal rank (and some statistical information)
     eval_score = []
@@ -103,8 +82,8 @@ def main():
     min_rank = float("inf")
 
     # create a ranking for each evaluation text and score it.
-    for i, eval_text in tqdm(list(enumerate(eval_texts)), desc="Evaluating dev/test set"):
-        out_citations = eval_out_citations[i]
+    for eval_index, eval_text in tqdm(list(enumerate(eval_texts)), desc="Evaluating dev/test set"):
+        out_citations = eval_out_citations[eval_index]
         if len(out_citations) > 0:
             # this paper cites some paper in train, so we have a "true" cited paper to rank
             rankings = []
@@ -118,20 +97,15 @@ def main():
                     scores.extend(predictor.predict_batch_json(batch))
 
             # rank all the papers in the training set
-            for train_index, train_tokens in enumerate(train_token_rows):
+            for train_index in range(len(train_ids)):
                 # evaluate this train/evaluation pair by whatever model was specified on the command line
                 if is_jaccard:
-                    eval_tokens = set(get_tokens(tokenizer, eval_text, lemmatize))
-                    score = jaccard_similarity(eval_tokens, train_tokens)
+                    score = jaccard_similarity(set(eval_text.split()), train_tokens[train_index])
                 elif is_allennlp:
-                    score = scores[train_index]['class_probabilities'][1]
+                    class_probs = scores[train_index]['class_probabilities']
+                    score = max(class_probs) if scores[train_index]['label'] == "1" else min(class_probs)
                 elif is_tfidf:
-                    eval_index = i + len(train_token_rows)
-                    if is_test:
-                        eval_index += len(ids) - int(0.9 * len(ids))
-                    a = tfidf_matrix[eval_index]
-                    b = tfidf_matrix[train_index]
-                    score = cosine_similarity(a, b)
+                    score = cosine_similarity(train_tfidf[train_index], eval_tfidf[eval_index])
                 else:
                     raise ValueError("did not provide proper evaluation type as first command line argument")
                 rankings.append((score, train_index))
@@ -153,28 +127,33 @@ def main():
                 min_rank = min(min_rank, rank)
                 eval_score.append(1.0 / rank)
 
-                # TODO: improve visibility into rankings and make it cleaner than uncommenting print lines
-                """
-                print("PAPER " + str(i))
-                print(eval_title[i])
-                print(eval_abstracts[i])
-                print("correct papers")
-                print_top_three(true_citations, ranking_ids, train_ids, train_title, train_abstracts)
-                incorrect_rankings = list(filter(lambda x: x not in true_citations, ranking_ids))
-                print("incorrect papers")
-                print_top_three(incorrect_rankings, ranking_ids, train_ids, train_title, train_abstracts)
-                print()
-                """
+                if ranking_output is not None:
 
-                # PRINT TOP 10 TITLES PER TEST PAPER
-                # paper_titles = get_relevant_papers(rankings[:10], train_title)
-                # f.write(eval_title[i] + "\n " + ','.join(list(paper_titles)) + "\n\n")
+                    # log the query paper and the top 10 candidate papers
+                    ranking_output.write("QUERY\n" + eval_text + "\n")
+                    ranking_output.write("First cited at " + str(rank) + "\nTOP 20\n")
+
+                    # log the top correct and incorrect papers
+                    ranking_output.write("TOP CITED PAPERS\n")
+                    log_top_rankings(true_citations, ranking_ids, train_ids, train_texts, ranking_output)
+                    incorrect_rankings = list(filter(lambda x: x not in true_citations, ranking_ids))
+                    ranking_output.write("TOP UNCITED PAPERS\n")
+                    log_top_rankings(incorrect_rankings, ranking_ids, train_ids, train_texts, ranking_output)
+                    ranking_output.write("\n")
+
+                    # log the
+                    for ranked_index, ranked_tuple in enumerate(rankings[:20]):
+                        ranked_score, ranked_train_index = ranked_tuple
+                        ranking_output.write("RANK = " + str(ranked_index + 1) + "; score = " + str(ranked_score) +
+                                            "; correct = " + str(ranking_ids[ranked_index] in true_citations) +
+                                             "\n" + train_texts[ranked_train_index] + "\n")
+                    ranking_output.write("\n")
+
     # calculate final evaluation score for the dataset
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
     print("min rank = " + str(min_rank))
     print(sum(eval_score) / matching_citation_count)
-    f.close()
 
 
 # given two sets of words from two papers, calculate the Jaccard similarity.
@@ -185,22 +164,34 @@ def jaccard_similarity(a, b):
     return len(c) / (len(a) + len(b) - len(c))
 
 
-# Given a tokenizer, a paper string, and whether or not to lemmatize, tokenize the string.
-def get_tokens(tokenizer, paper: str, lemmatize: bool) -> Set[str]:
-    if lemmatize:
-        tokens = tokenizer(paper.lower())
-        return {token.lemma_ for token in tokens if token.is_alpha and not token.is_stop}
-    return paper.split()
-
-
 # print top three examples from the given rankings
-def print_top_three(rankings, ranking_ids, train_ids, train_title, train_abstracts):
+def log_top_rankings(rankings, ranking_ids, train_ids, train_texts, ranking_output):
     for i in range(3):
         if i < len(rankings):
             paper_index = train_ids.index(rankings[i])
-            print(ranking_ids.index(rankings[i]) + 1)
-            print(train_title[paper_index])
-            print(train_abstracts[paper_index])
+            ranking_output.write("RANK " + str(ranking_ids.index(rankings[i]) + 1) + "\n")
+            ranking_output.write(train_texts[paper_index] + "\n")
+
+
+# read data to return each field as a separate list
+def get_dataset_fields(dataset, use_titles, use_abstracts):
+    ids = []
+    texts = []
+    out_citations = []
+
+    with open(dataset, 'rb') as f:
+        for line in f:
+            parsed_line = json.loads(line)
+            if use_abstracts:
+                text = parsed_line['paperAbstract']
+            elif use_titles:
+                text = parsed_line['title']
+            else:
+                text = parsed_line['title'] + " " + parsed_line['paperAbstract']
+            ids.append(parsed_line['id'])
+            texts.append(text)
+            out_citations.append(parsed_line['outCitations'])
+    return ids, texts, out_citations
 
 
 if __name__ == '__main__':

@@ -7,8 +7,7 @@ from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.data.fields import LabelField, TextField, Field, MetadataField
 from allennlp.data.instance import Instance
 from allennlp.data.token_indexers import TokenIndexer, SingleIdTokenIndexer
-from allennlp.data.tokenizers import Tokenizer, WordTokenizer
-from allennlp.data.tokenizers.word_splitter import SpacyWordSplitter
+from allennlp.data.tokenizers.word_splitter import JustSpacesWordSplitter
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -16,10 +15,9 @@ logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 @DatasetReader.register("pairs_reader")
 class PairsDatasetReader(DatasetReader):
     def __init__(self,
-                 source_language: str = 'en_core_web_sm',
                  token_indexers: Dict[str, TokenIndexer] = None) -> None:
         super().__init__()
-        self._tokenizer = SpacyWordSplitter(language=source_language)
+        self._tokenizer = JustSpacesWordSplitter()
         self._token_indexers = token_indexers or {'tokens': SingleIdTokenIndexer()}
 
     @overrides
