@@ -28,7 +28,7 @@ def vec(words, keys):
     return words.loc[words.index.intersection(keys)].to_numpy().mean(axis=0).transpose()
 
 
-def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag, print_titles_flag):
+def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag, print_titles_flag, is_test):
     # For cosine similarity
     glove_embeddings_file_path = GLOVE_INPUT_FILE_PATH + embeddings_file_name;
     word2_vec_output_file = glove_embeddings_file_path + '.word2vec'
@@ -54,9 +54,6 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag, print
     titles = extract_keys(lines, 'title')
     abstracts = extract_keys(lines, 'paperAbstract')
     out_citations = extract_keys(lines, 'outCitations')
-
-    # TODO: DO NOT HARDCODE THIS
-    is_test = False
 
     train_ids, eval_ids = split_data(ids, 0.8, 0.9, is_test)
     train_abstracts, eval_abstracts = split_data(abstracts, 0.8, 0.9, is_test)
@@ -129,13 +126,14 @@ def main():
     parser.add_argument('embeddings_file_name', type=str, help='file name of the GloVe vectors')
     parser.add_argument('dataset_file_name', type=str, help='file name of the dataset')
     parser.add_argument('--cosine_similarity_flag', action='store_true',
-                        help='whether we want to use cosine similiarty')
+                        help='whether we want to use cosine similarity')
     parser.add_argument('--print_titles_flag', action='store_true',
                         help='whether to print the top 10 titles')
+    parser.add_argument('--test', action='store_false', help='whether to run for test')
     args = parser.parse_args()
 
     glove_embeddings(args.embeddings_file_name, args.dataset_file_name, args.cosine_similarity_flag,
-                     args.print_titles_flag)
+                     args.print_titles_flag, args.test)
 
 
 if __name__ == '__main__':
