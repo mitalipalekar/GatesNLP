@@ -23,9 +23,10 @@ SHARED_DIR: str = "/projects/instr/19sp/cse481n/GatesNLP/"
 TRAIN: str = SHARED_DIR + 'train.txt'
 DEV: str = SHARED_DIR + 'dev.txt'
 TEST: str = SHARED_DIR + 'test.txt'
-TRAIN_OUTPUT: str = SHARED_DIR + 'supervised_pairs/large_pairs_train.txt'
-DEV_OUTPUT: str = SHARED_DIR + 'supervised_pairs/large_pairs_dev.txt'
-TEST_OUTPUT: str = SHARED_DIR + 'supervised_pairs/large_pairs_test.txt'
+NAME: str = 'no_hop_tokenized'
+TRAIN_OUTPUT: str = SHARED_DIR + 'supervised_pairs/' + NAME + '_pairs_train.txt'
+DEV_OUTPUT: str = SHARED_DIR + 'supervised_pairs/' + NAME + '_pairs_dev.txt'
+TEST_OUTPUT: str = SHARED_DIR + 'supervised_pairs/' + NAME + '_pairs_test.txt'
 
 
 def main():
