@@ -1,7 +1,7 @@
 # mainly based on this example:
 # https://github.com/allenai/allennlp-as-a-library-example/blob/master/my_library/models/academic_paper_classifier.py
 
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional
 
 import numpy
 from overrides import overrides
@@ -94,7 +94,8 @@ class RelevanceModel(Model):
         text_candidate_mask = util.get_text_field_mask(candidate_paper)
         encoded_candidate_tokens = self.encoder(embedded_candidate_tokens, text_candidate_mask)
 
-        logits = self.classifier_feedforward(torch.cat([encoded_query_tokens, encoded_candidate_tokens]))
+        concat_papers = torch.cat([encoded_query_tokens, encoded_candidate_tokens], dim=1)
+        logits = self.classifier_feedforward(concat_papers)
         output_dict = {'logits': logits}
         if label is not None:
             loss = self.loss(logits, label)
