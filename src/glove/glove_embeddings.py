@@ -8,7 +8,7 @@ import os,sys,inspect
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
-from gnlputils import cosine_similarity, extract_keys, split_data, get_from_rankings
+from gnlputils import cosine_similarity, extract_keys, split_data, get_from_rankings, get_relevant_titles
 
 import pandas as pd
 import numpy as np
@@ -60,6 +60,10 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
     train_titles, eval_titles = split_data(titles, 0.8, 0.9, is_test)
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
+    # get file to write titles too
+    f = open("error_analysis_debug.txt", "w")
+    f.write("test title, top-10 similar papers\n")
+
     # TODO: changed abstracts to titles
     if cosine_similarity_flag:
         train_titles = [vec(glove_embeddings_data, x.split()) for x in tqdm(train_titles, desc='Train Embeddings')]
@@ -88,22 +92,27 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag):
                         document_similarity = model.wmdistance(train_split, eval_split)
                         rankings.append((document_similarity, j))
                 rankings.append((document_similarity, j))
-        if cosine_similarity_flag:
-            rankings.sort(key=lambda x: x[0], reverse=True)
-        else:
-            rankings.sort(key=lambda x: x[0])
+            if cosine_similarity_flag:
+                rankings.sort(key=lambda x: x[0], reverse=True)
+            else:
+                rankings.sort(key=lambda x: x[0])
 
-        out_citations = eval_out_citations[i]
-        if len(out_citations):
-            # gets the rankings of the training papers in the correct order
-            ranking_ids = get_from_rankings(rankings, train_ids)
-            true_citations = [citation for citation in ranking_ids if citation in out_citations]
-            if len(true_citations):
-                matching_citation_count += 1
-                rank = ranking_ids.index(true_citations[0]) + 1
-                min_rank = min(min_rank, rank)
-                eval_score.append(1.0 / rank)
-                print("\nEval Score for iteration " + str(i) + ": " + str(1.0 / rank) + "\n")
+            out_citations = eval_out_citations[i]
+            if len(out_citations):
+                # gets the rankings of the training papers in the correct order
+                ranking_ids = get_from_rankings(rankings, train_ids)
+                true_citations = [citation for citation in ranking_ids if citation in out_citations]
+                if len(true_citations):
+                    matching_citation_count += 1
+                    rank = ranking_ids.index(true_citations[0]) + 1
+                    min_rank = min(min_rank, rank)
+                    eval_score.append(1.0 / rank)
+                    print("\nEval Score for iteration " + str(i) + ": " + str(1.0 / rank) + "\n")
+
+                # PRINT TOP 10 TITLES PER TEST PAPER
+                paper_titles = get_relevant_titles(rankings[:10], train_titles)
+                print(paper_titles)
+                f.write(eval_titles[i] + " " + str(1.0 / rank) + "\n " + ','.join(list(paper_titles)) + "\n\n")
 
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
@@ -116,6 +125,8 @@ def main():
     parser.add_argument('embeddings_file_name', type=str, help = 'file name of the GloVe vectors')
     parser.add_argument('dataset_file_name', type=str, help='file name of the dataset')
     parser.add_argument('--cosine_similarity_flag', action='store_true', help = 'whether we want to use cosine similiarty')
+    parser.add_argument('--print_titles', action='store_true',
+                        help='whether to print the top 10 titles')
     args = parser.parse_args()
 
     glove_embeddings(args.embeddings_file_name, args.dataset_file_name, args.cosine_similarity_flag)

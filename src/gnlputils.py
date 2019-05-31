@@ -41,3 +41,6 @@ def read_dataset(dataset):
         text[id] = paper['title'] + ' ' + paper['paperAbstract']
         out_citations[id] = paper['outCitations']
     return text, out_citations
+
+def get_relevant_titles(rankings, train_title):
+    return [train_title[index] for _, index in rankings]
