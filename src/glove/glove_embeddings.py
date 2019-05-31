@@ -4,7 +4,8 @@ import argparse
 from gensim.models import KeyedVectors
 from gensim.scripts.glove2word2vec import glove2word2vec
 
-import os,sys,inspect
+import os, sys, inspect
+
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
@@ -17,10 +18,10 @@ from tqdm import tqdm
 
 from nltk.corpus import stopwords
 from nltk import download
+
 download('stopwords')  # Download stopwords list.
 
 GLOVE_INPUT_FILE_PATH = '/projects/instr/19sp/cse481n/GatesNLP/'
-WORD2VEC_OUTPUT_FILE = 'glove.6B.50d.txt.word2vec'
 
 
 def vec(words, keys):
@@ -30,11 +31,13 @@ def vec(words, keys):
 def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag, print_titles_flag):
     # For cosine similarity
     glove_embeddings_file_path = GLOVE_INPUT_FILE_PATH + embeddings_file_name;
-    glove_embeddings_data = pd.read_csv(glove_embeddings_file_path, sep=" ", index_col=0, header=None, quoting=csv.QUOTE_NONE)
+    word2_vec_output_file = glove_embeddings_file_path + '.word2vec'
+    glove_embeddings_data = pd.read_csv(glove_embeddings_file_path, sep=" ", index_col=0, header=None,
+                                        quoting=csv.QUOTE_NONE)
 
     # For wmdistance
-    glove2word2vec(glove_embeddings_file_path, WORD2VEC_OUTPUT_FILE)
-    model = KeyedVectors.load_word2vec_format(WORD2VEC_OUTPUT_FILE, binary=False)
+    glove2word2vec(glove_embeddings_file_path, word2_vec_output_file)
+    model = KeyedVectors.load_word2vec_format(word2_vec_output_file, binary=False)
     model.init_sims(replace=True)  # Normalizes the vectors in the word2vec class.
 
     stop_words = stopwords.words('english')
@@ -75,7 +78,7 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag, print
     matching_citation_count = 1
     min_rank = float("inf")
     # TODO: changed eval_abstracts -> eval_titles
-    for i, eval_abstract in tqdm(list(enumerate(eval_titles[:20])), desc='Generating rankings for evaluation set'):
+    for i, eval_abstract in tqdm(list(enumerate(eval_titles)), desc='Generating rankings for evaluation set'):
         rankings = []
         if len(eval_abstract) > 0:
             # TODO: changed train_abstracts -> train_titles
@@ -111,8 +114,9 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag, print
                 # PRINT TOP 10 TITLES PER TEST PAPER
                 if print_titles_flag:
                     paper_titles = get_relevant_titles(rankings[:10], train_titles)
-                    print(paper_titles)
-                    f.write(str(eval_titles[i]) + ": " + str(1.0 / rank) + "\n " + ','.join(list(paper_titles)) + "\n\n")
+                    # print(paper_titles)
+                    f.write(
+                        str(eval_titles[i]) + ": " + str(1.0 / rank) + "\n " + ','.join(list(paper_titles)) + "\n\n")
 
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
@@ -122,14 +126,16 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag, print
 
 def main():
     parser = argparse.ArgumentParser(description='Arguments to be passed into the GloVe embeddings.')
-    parser.add_argument('embeddings_file_name', type=str, help = 'file name of the GloVe vectors')
+    parser.add_argument('embeddings_file_name', type=str, help='file name of the GloVe vectors')
     parser.add_argument('dataset_file_name', type=str, help='file name of the dataset')
-    parser.add_argument('--cosine_similarity_flag', action='store_true', help = 'whether we want to use cosine similiarty')
+    parser.add_argument('--cosine_similarity_flag', action='store_true',
+                        help='whether we want to use cosine similiarty')
     parser.add_argument('--print_titles_flag', action='store_true',
                         help='whether to print the top 10 titles')
     args = parser.parse_args()
 
-    glove_embeddings(args.embeddings_file_name, args.dataset_file_name, args.cosine_similarity_flag, args.print_titles_flag)
+    glove_embeddings(args.embeddings_file_name, args.dataset_file_name, args.cosine_similarity_flag,
+                     args.print_titles_flag)
 
 
 if __name__ == '__main__':
