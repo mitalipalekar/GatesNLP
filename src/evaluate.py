@@ -5,6 +5,7 @@
 import json
 import sys
 from typing import Set
+import argparse
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from tqdm import tqdm
@@ -14,14 +15,11 @@ from gnlputils import cosine_similarity, get_from_rankings
 
 # configurations
 GPU: int = 1
-MODEL: str = 'tokenized'
 
 SHARED_DIR = "/projects/instr/19sp/cse481n/GatesNLP/"
 TRAIN: str = SHARED_DIR + "train.txt"
 DEV: str = SHARED_DIR + "dev.txt"
 TEST: str = SHARED_DIR + "test.txt"
-MODEL_PATH: str = "/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/" + MODEL + "/model.tar.gz"
-RANKING_OUTPUT = "/projects/instr/19sp/cse481n/GatesNLP/supervised_pairs/rankings_" + MODEL + ".txt"
 ALLENNLP_MODEL_NAME: str = "relevance_predictor"
 
 BATCH_SIZE: int = 650
@@ -29,14 +27,23 @@ BATCH_SIZE: int = 650
 
 def main():
     # read command line arguments
-    is_jaccard = len(sys.argv) > 1 and sys.argv[1] == "j"
-    is_allennlp = len(sys.argv) > 1 and sys.argv[1] == "a"
-    is_tfidf = len(sys.argv) > 1 and sys.argv[1] == "t"
+    parser = argparse.ArgumentParser(description='Arguments to be passed into the evaluation script.')
+    parser.add_argument('model', type=str, help='the model to evaluate')
+    parser.add_argument('--use_titles', action='store_true',
+                        help='whether we want to use cosine similarity')
+    parser.add_argument('--use_abstracts', action='store_true',
+                        help='whether to print the top 10 titles')
+    parser.add_argument('--test', action='store_false', help='whether to run for test')
+    args = parser.parse_args()
 
-    use_titles = len(sys.argv) > 2 and sys.argv[2] == "title"
-    use_abstracts = len(sys.argv) > 2 and sys.argv[2] == "abstract"
+    # evaluate the model as specified
+    evaluate_model(args.model, args.use_titles, args.use_abstracts, args.test)
 
-    is_test = len(sys.argv) > 3 and sys.argv[3] == "test"
+
+def evaluate_model(model, use_titles, use_abstracts, is_test):
+    is_jaccard = model == "j"
+    is_tfidf = model == "t"
+    is_allennlp = not is_jaccard and not is_tfidf
 
     # read in train, dev, and test
     train_ids, train_texts, train_out_citations = get_dataset_fields(TRAIN, use_titles, use_abstracts)
@@ -53,13 +60,6 @@ def main():
         total_count += count
         citation_counts[i] = count
 
-    output_path = Path(RANKING_OUTPUT)
-    if output_path.is_file():
-        print("Warning: output file will not be written since it already exists")
-        ranking_output = None
-    else:
-        ranking_output = open(RANKING_OUTPUT, "w")
-
     # prepare model-specific objects
     if is_tfidf:
         vectorizer = TfidfVectorizer()
@@ -73,8 +73,18 @@ def main():
         from gatesnlp.dataset_readers import pairs_reader
         from gatesnlp.predictors import predictor
 
-        archive = load_archive(MODEL_PATH, cuda_device=GPU)
+        model_path = SHARED_DIR + "supervised_pairs/" + model + "/model.tar.gz"
+        archive = load_archive(model_path, cuda_device=GPU)
         predictor = Predictor.from_archive(archive, ALLENNLP_MODEL_NAME)
+
+    # update output path
+    ranking_output_path = SHARED_DIR + "supervised_pairs/rankings_" + model + ".txt"
+    output_path = Path(ranking_output_path)
+    if output_path.is_file():
+        print("Warning: output file will not be written since it already exists")
+        ranking_output = None
+    else:
+        ranking_output = open(ranking_output_path, "w")
 
     # keep track of each reciprocal rank (and some statistical information)
     eval_score = []
@@ -131,7 +141,7 @@ def main():
 
                     # log the query paper and the top 10 candidate papers
                     ranking_output.write("QUERY\n" + eval_text + "\n")
-                    ranking_output.write("First cited at " + str(rank) + "\nTOP 20\n")
+                    ranking_output.write("First cited at " + str(rank) + "\n")
 
                     # log the top correct and incorrect papers
                     ranking_output.write("TOP CITED PAPERS\n")
@@ -139,7 +149,7 @@ def main():
                     incorrect_rankings = list(filter(lambda x: x not in true_citations, ranking_ids))
                     ranking_output.write("TOP UNCITED PAPERS\n")
                     log_top_rankings(incorrect_rankings, ranking_ids, train_ids, train_texts, ranking_output)
-                    ranking_output.write("\n")
+                    ranking_output.write("TOP 20\n")
 
                     # log the
                     for ranked_index, ranked_tuple in enumerate(rankings[:20]):
