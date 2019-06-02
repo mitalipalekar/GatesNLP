@@ -5,7 +5,7 @@ SHARED_DIR: str = "/projects/instr/19sp/cse481n/GatesNLP/"
 
 def main():
     parser = argparse.ArgumentParser(description='Arguments to be passed into the evaluation script.')
-    parser.add_argument('model', type=str, help='the model to evaluate')
+    parser.add_argument('model', type=str, help='the model from which to calculate the score from its log')
     args = parser.parse_args()
     partial = open(SHARED_DIR + "supervised_pairs/rankings_" + args.model + ".txt", 'r').readlines()
     scores = []

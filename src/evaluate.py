@@ -200,9 +200,9 @@ def get_dataset_fields(dataset, use_titles, use_abstracts):
     with open(dataset, 'rb') as f:
         for line in f:
             parsed_line = json.loads(line)
-            if use_abstracts:
+            if use_abstracts and not use_titles:
                 text = parsed_line['paperAbstract']
-            elif use_titles:
+            elif use_titles and not use_abstracts:
                 text = parsed_line['title']
             else:
                 text = parsed_line['title'] + " " + parsed_line['paperAbstract']
