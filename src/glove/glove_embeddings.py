@@ -129,7 +129,7 @@ def main():
                         help='whether we want to use cosine similarity')
     parser.add_argument('--print_titles_flag', action='store_true',
                         help='whether to print the top 10 titles')
-    parser.add_argument('--test', action='store_false', help='whether to run for test')
+    parser.add_argument('--test', action='store_true', help='whether to run for test')
     args = parser.parse_args()
 
     glove_embeddings(args.embeddings_file_name, args.dataset_file_name, args.cosine_similarity_flag,
