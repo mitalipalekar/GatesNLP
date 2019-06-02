@@ -79,7 +79,8 @@ def evaluate_model(model, use_titles, use_abstracts, is_test, gpu, start, end):
 
 
     # update output path
-    ranking_output_path = SHARED_DIR + "supervised_pairs/rankings_" + model + ("" if is_test else "_dev") + ".txt"
+    ranking_output_path = SHARED_DIR + "supervised_pairs/rankings_" + model + ("" if is_test else "_dev") + \
+                          ("" if start == 0 else "_" + str(start)) + ("" if end == 2650 else "_" + str(end)) + ".txt"
     output_path = Path(ranking_output_path)
     if output_path.is_file():
         print("Warning: output file will not be written since it already exists")
