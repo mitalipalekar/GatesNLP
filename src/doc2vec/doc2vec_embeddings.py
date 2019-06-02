@@ -5,18 +5,23 @@ from gensim.models import Doc2Vec
 from gensim.models.doc2vec import TaggedDocument
 from tqdm import tqdm, trange
 
+import os,sys,inspect
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
 from gnlputils import extract_keys, split_data, get_from_rankings
 
+DATASET_INPUT_FILE_PATH = '/projects/instr/19sp/cse481n/GatesNLP/'
 WORD_EMBEDDINGS_EVAL = 'doc2vec_eval.pk'
 WORD_EMBEDDINGS_TRAIN = 'doc2vec_train.pk'
 
-UNK_THRESHOLD = 3
+# UNK_THRESHOLD = 3
 
 
 def generate_word_embeddings(papers):
     global document_similarity
     lines = []
-    with open(papers, 'rb') as f:
+    with open(DATASET_INPUT_FILE_PATH + papers, 'rb') as f:
         for line in tqdm(f, desc='Read papers'):
             lines.append(json.loads(line))
 
@@ -35,25 +40,30 @@ def generate_word_embeddings(papers):
     train_titles, eval_titles = split_data(titles, 0.8, 0.9, is_test)
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
-    dictionary = unk_train(train_abstracts)
-    train_docs = create_tagged_doc(train_abstracts, dictionary)
+    # dictionary = unk_train(train_abstracts)
+    train_docs = create_tagged_doc(train_abstracts)
 
     model = Doc2Vec(workers=11, min_count=5, window=10, size=100, alpha=0.025, iter=20)
     model.build_vocab(train_docs)
     model.train(train_docs, epochs=model.iter, total_examples=model.corpus_count)
 
-    # NOTE: Make sure to always UNK everything!
     eval_score = []
     matching_citation_count = 1
     min_rank = float("inf")
 
-    for i, eval_abstract in tqdm(list(enumerate(eval_abstracts[:2])), desc='generating rankings for evaluation set'):
+    # TODO: changed eval_abstracts -> eval_titles
+    for i, eval_abstract in tqdm(list(enumerate(eval_titles[:10])), desc='Generating rankings for evaluation set'):
+        rankings = []
         eval_split = eval_abstract.lower().split()
 
         if len(eval_split):
-            eval_doc_vec = model.infer_vector(eval_split, steps=50, alpha=0.25)
-            rankings = model.docvecs.most_similar(positive=[eval_doc_vec])
-            rankings = [(score, int(index)) for index, score in rankings]
+            # TODO: changed train_abstracts -> train_titles
+            for j, train_abstract in tqdm(list(enumerate(train_titles)), desc='Iterating through train titles'):
+                train_split = train_abstract.lower().split()
+                if len(train_split):
+                    document_similarity = model.wmdistance(train_split, eval_split)
+                    rankings.append((document_similarity, j))
+            rankings.sort(key=lambda x: x[0])
 
             out_citations = eval_out_citations[i]
             if len(out_citations):
@@ -66,6 +76,7 @@ def generate_word_embeddings(papers):
                     rank = ranking_ids.index(true_citations[0]) + 1
                     min_rank = min(min_rank, rank)
                     eval_score.append(1.0 / rank)
+                    print("\nEval Score for iteration " + str(i) + ": " + str(1.0 / rank) + "\n")
 
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
@@ -73,32 +84,8 @@ def generate_word_embeddings(papers):
     print(sum(eval_score) / matching_citation_count)
 
 
-def create_tagged_doc(abstracts: [str], dictionary):
-    return [TaggedDocument(unk_abstract(abstract.split(), dictionary), str(i)) for i, abstract in tqdm(enumerate(abstracts), desc='UNKing inputs')]
-
-
-def unk_abstract(abstract, dictionary):
-    return [word if word in dictionary else 'UNK' for word in abstract]
-
-
-def unk_train(train_abstracts):
-    word_counts = {}
-    for abstract in train_abstracts:
-        for word in abstract.split():
-            if word in word_counts:
-                word_counts[word] = word_counts.get(word) + 1
-            else:
-                word_counts[word] = 1
-
-    return generate_dictionary(word_counts)
-
-
-def generate_dictionary(word_counts):
-    dictionary = {'UNK'}
-    for key, value in word_counts.items():
-        if value > UNK_THRESHOLD:
-            dictionary.add(key)
-    return dictionary
+def create_tagged_doc(abstracts: [str]):
+    return [TaggedDocument(abstract.lower().split(), str(i)) for i, abstract in tqdm(enumerate(abstracts), desc='UNKing inputs')]
 
 
 def main():
