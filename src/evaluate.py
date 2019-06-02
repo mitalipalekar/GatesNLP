@@ -13,9 +13,6 @@ from pathlib import Path
 
 from gnlputils import cosine_similarity, get_from_rankings
 
-# configurations
-GPU: int = 1
-
 SHARED_DIR = "/projects/instr/19sp/cse481n/GatesNLP/"
 TRAIN: str = SHARED_DIR + "train.txt"
 DEV: str = SHARED_DIR + "dev.txt"
@@ -29,18 +26,21 @@ def main():
     # read command line arguments
     parser = argparse.ArgumentParser(description='Arguments to be passed into the evaluation script.')
     parser.add_argument('model', type=str, help='the model to evaluate')
+    parser.add_argument('-gpu', type=int, help='the gpu to use', required=False, default=-1)
+    parser.add_argument('-start', type=int, help='the evaluation paper to start on', required=False, default=0)
+    parser.add_argument('-end', type=int, help='the evaluation paper to end on', required=False, default=2650)
     parser.add_argument('--use_titles', action='store_true',
                         help='whether we want to use cosine similarity')
     parser.add_argument('--use_abstracts', action='store_true',
                         help='whether to print the top 10 titles')
-    parser.add_argument('--test', action='store_false', help='whether to run for test')
+    parser.add_argument('--test', action='store_true', help='whether to run for test')
     args = parser.parse_args()
 
     # evaluate the model as specified
-    evaluate_model(args.model, args.use_titles, args.use_abstracts, args.test)
+    evaluate_model(args.model, args.use_titles, args.use_abstracts, args.test, args.gpu, args.start, args.end)
 
 
-def evaluate_model(model, use_titles, use_abstracts, is_test):
+def evaluate_model(model, use_titles, use_abstracts, is_test, gpu, start, end):
     is_jaccard = model == "j"
     is_tfidf = model == "t"
     is_allennlp = not is_jaccard and not is_tfidf
@@ -74,11 +74,12 @@ def evaluate_model(model, use_titles, use_abstracts, is_test):
         from gatesnlp.predictors import predictor
 
         model_path = SHARED_DIR + "supervised_pairs/" + model + "/model.tar.gz"
-        archive = load_archive(model_path, cuda_device=GPU)
+        archive = load_archive(model_path, cuda_device=gpu)
         predictor = Predictor.from_archive(archive, ALLENNLP_MODEL_NAME)
 
+
     # update output path
-    ranking_output_path = SHARED_DIR + "supervised_pairs/rankings_" + model + ".txt"
+    ranking_output_path = SHARED_DIR + "supervised_pairs/rankings_" + model + ("" if is_test else "_dev") + ".txt"
     output_path = Path(ranking_output_path)
     if output_path.is_file():
         print("Warning: output file will not be written since it already exists")
@@ -92,7 +93,7 @@ def evaluate_model(model, use_titles, use_abstracts, is_test):
     min_rank = float("inf")
 
     # create a ranking for each evaluation text and score it.
-    for eval_index, eval_text in tqdm(list(enumerate(eval_texts)), desc="Evaluating dev/test set"):
+    for eval_index, eval_text in tqdm(list(enumerate(eval_texts))[start:end], desc="Evaluating dev/test set"):
         out_citations = eval_out_citations[eval_index]
         if len(out_citations) > 0:
             # this paper cites some paper in train, so we have a "true" cited paper to rank
@@ -140,7 +141,8 @@ def evaluate_model(model, use_titles, use_abstracts, is_test):
                 if ranking_output is not None:
 
                     # log the query paper and the top 10 candidate papers
-                    ranking_output.write("QUERY\n" + eval_text + "\n")
+                    ranking_output.write("RANKING " + str(eval_index) + "\n")
+                    ranking_output.write("QUERY\n" + eval_ids[eval_index] + "\n")
                     ranking_output.write("First cited at " + str(rank) + "\n")
 
                     # log the top correct and incorrect papers
@@ -156,14 +158,20 @@ def evaluate_model(model, use_titles, use_abstracts, is_test):
                         ranked_score, ranked_train_index = ranked_tuple
                         ranking_output.write("RANK = " + str(ranked_index + 1) + "; score = " + str(ranked_score) +
                                             "; correct = " + str(ranking_ids[ranked_index] in true_citations) +
-                                             "\n" + train_texts[ranked_train_index] + "\n")
+                                             "; id = " + train_ids[ranked_train_index] + "\n")
                     ranking_output.write("\n")
 
     # calculate final evaluation score for the dataset
-    print("matching citation count = " + str(matching_citation_count))
-    print(eval_score)
-    print("min rank = " + str(min_rank))
-    print(sum(eval_score) / matching_citation_count)
+    if ranking_output is not None:
+        ranking_output.write(str(eval_score) + "\n")
+        ranking_output.write("matching citation count = " + str(matching_citation_count) + "\n")
+        ranking_output.write("min rank = " + str(min_rank) + "\n")
+        ranking_output.write(str(sum(eval_score) / matching_citation_count) + "\n")
+    else:
+        print(eval_score)
+        print("matching citation count = " + str(matching_citation_count))
+        print("min rank = " + str(min_rank))
+        print(str(sum(eval_score) / matching_citation_count))
 
 
 # given two sets of words from two papers, calculate the Jaccard similarity.
@@ -180,7 +188,7 @@ def log_top_rankings(rankings, ranking_ids, train_ids, train_texts, ranking_outp
         if i < len(rankings):
             paper_index = train_ids.index(rankings[i])
             ranking_output.write("RANK " + str(ranking_ids.index(rankings[i]) + 1) + "\n")
-            ranking_output.write(train_texts[paper_index] + "\n")
+            ranking_output.write(train_ids[paper_index] + "\n")
 
 
 # read data to return each field as a separate list

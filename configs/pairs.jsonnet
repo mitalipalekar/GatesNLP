@@ -6,8 +6,7 @@
       "type": "pairs_reader",
       "token_indexers": {
         "tokens": {
-          "type": "single_id",
-          "lowercase_tokens": true
+          "type": "single_id"
         }
       }
     },

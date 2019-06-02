@@ -49,4 +49,4 @@ def get_relevant_titles(rankings, train_title):
     return [train_title[index] for _, index in rankings]
 
 def tokenize(text):
-    return " ".join([token.text for token in tokenizer.split_words(text)])
+    return " ".join([token.text.lower() for token in tokenizer.split_words(text)])
