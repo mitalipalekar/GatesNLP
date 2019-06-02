@@ -76,6 +76,7 @@ def generate_word_embeddings(papers):
                     rank = ranking_ids.index(true_citations[0]) + 1
                     min_rank = min(min_rank, rank)
                     eval_score.append(1.0 / rank)
+                    print("\nEval Score for iteration " + str(i) + ": " + str(1.0 / rank) + "\n")
 
     print("matching citation count = " + str(matching_citation_count))
     print(eval_score)
