@@ -2,7 +2,7 @@
 
 import json
 
-from gnlputils import split_all_data
+from gnlputils import split_all_data, tokenize
 
 SHARED_DIR: str = "/projects/instr/19sp/cse481n/GatesNLP/"
 PAPERS: str = SHARED_DIR + "extended_dataset.txt"
@@ -18,7 +18,18 @@ def main():
 
     lines.sort(key=lambda x: x['year'])
 
-    train, dev, test = split_all_data(lines, 0.8, 0.9)
+    # tokenize papers, so we don't need to tokenize them on evaluation
+    tokenized_papers = []
+    for line in lines:
+        paper = {}
+        paper['id'] = line['id']
+        paper['title'] = tokenize(line['title'])
+        paper['paperAbstract'] = tokenize(line['paperAbstract'])
+        paper['outCitations'] = line['outCitations']
+        tokenized_papers.append(paper)
+
+
+    train, dev, test = split_all_data(tokenized_papers, 0.8, 0.9)
     write_dataset(TRAIN, train)
     write_dataset(DEV, dev)
     write_dataset(TEST, test)
