@@ -21,7 +21,7 @@ from nltk import download
 
 download('stopwords')  # Download stopwords list.
 
-GLOVE_INPUT_FILE_PATH = '/projects/instr/19sp/cse481n/GatesNLP/'
+GATESNLP_ROOT = '/projects/instr/19sp/cse481n/GatesNLP/'
 
 
 def vec(words, keys):
@@ -30,20 +30,21 @@ def vec(words, keys):
 
 def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag, print_titles_flag, is_test):
     # For cosine similarity
-    glove_embeddings_file_path = GLOVE_INPUT_FILE_PATH + embeddings_file_name;
+    glove_embeddings_file_path = GATESNLP_ROOT + embeddings_file_name
     word2_vec_output_file = glove_embeddings_file_path + '.word2vec'
     glove_embeddings_data = pd.read_csv(glove_embeddings_file_path, sep=" ", index_col=0, header=None,
                                         quoting=csv.QUOTE_NONE)
 
     # For wmdistance
-    glove2word2vec(glove_embeddings_file_path, word2_vec_output_file)
+    if not os.path.exists(word2_vec_output_file):
+        glove2word2vec(glove_embeddings_file_path, word2_vec_output_file)
     model = KeyedVectors.load_word2vec_format(word2_vec_output_file, binary=False)
     model.init_sims(replace=True)  # Normalizes the vectors in the word2vec class.
 
     stop_words = stopwords.words('english')
 
     lines = []
-    dataset_file_path = GLOVE_INPUT_FILE_PATH + papers
+    dataset_file_path = GATESNLP_ROOT + papers
     with open(dataset_file_path, 'rb') as f:
         for line in tqdm(f, desc='Reading papers'):
             lines.append(json.loads(line))
@@ -61,7 +62,7 @@ def glove_embeddings(embeddings_file_name, papers, cosine_similarity_flag, print
     train_out_citations, eval_out_citations = split_data(out_citations, 0.8, 0.9, is_test)
 
     # get file to write titles too
-    f = open("error_analysis.txt", "w")
+    f = open(embeddings_file_name + "error_analysis.txt", "w")
     f.write("test title, top-10 similar papers\n")
 
     # TODO: changed abstracts to titles
