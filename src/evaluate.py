@@ -34,13 +34,14 @@ def main():
     parser.add_argument('--use_abstracts', action='store_true',
                         help='whether to print the top 10 titles')
     parser.add_argument('--test', action='store_true', help='whether to run for test')
+    parser.add_argument('--score', action='store_true', help='whether to output only score instead of the ranking info')
     args = parser.parse_args()
 
     # evaluate the model as specified
-    evaluate_model(args.model, args.use_titles, args.use_abstracts, args.test, args.gpu, args.start, args.end)
+    evaluate_model(args.model, args.use_titles, args.use_abstracts, args.test, args.gpu, args.start, args.end, args.score)
 
 
-def evaluate_model(model, use_titles, use_abstracts, is_test, gpu, start, end):
+def evaluate_model(model, use_titles, use_abstracts, is_test, gpu, start, end, log_score):
     is_jaccard = model == "j"
     is_tfidf = model == "t"
     is_allennlp = not is_jaccard and not is_tfidf
@@ -80,7 +81,8 @@ def evaluate_model(model, use_titles, use_abstracts, is_test, gpu, start, end):
 
     # update output path
     ranking_output_path = SHARED_DIR + "supervised_pairs/rankings_" + model + ("" if is_test else "_dev") + \
-                          ("" if start == 0 else "_" + str(start)) + ("" if end == 2650 else "_" + str(end)) + ".txt"
+                          ("" if start == 0 else "_" + str(start)) + ("" if end == 2650 else "_" + str(end)) + \
+                          ("_score" if log_score else "") + ".txt"
     output_path = Path(ranking_output_path)
     if output_path.is_file():
         print("Warning: output file will not be written since it already exists")
@@ -89,8 +91,8 @@ def evaluate_model(model, use_titles, use_abstracts, is_test, gpu, start, end):
         ranking_output = open(ranking_output_path, "w")
 
     # keep track of each reciprocal rank (and some statistical information)
-    eval_score = []
-    matching_citation_count = 0
+    eval_sum = 0
+    eval_count = 0
     min_rank = float("inf")
 
     # create a ranking for each evaluation text and score it.
@@ -134,45 +136,45 @@ def evaluate_model(model, use_titles, use_abstracts, is_test, gpu, start, end):
             if len(true_citations) > 0:
                 # There are citations that we ranked that are actually cited, so add it to the MRR calculation
                 # NOTE: with ranking all papers, this will always be true if this paper cites some paper in train
-                matching_citation_count += 1
                 rank = ranking_ids.index(true_citations[0]) + 1
                 min_rank = min(min_rank, rank)
-                eval_score.append(1.0 / rank)
+                eval_sum += (1.0 / rank)
+                eval_count += 1
 
                 if ranking_output is not None:
 
-                    # log the query paper and the top 10 candidate papers
-                    ranking_output.write("RANKING " + str(eval_index) + "\n")
-                    ranking_output.write("QUERY\n" + eval_ids[eval_index] + "\n")
-                    ranking_output.write("First cited at " + str(rank) + "\n")
+                    if log_score:
+                        ranking_output.write(str(eval_sum) + " " + str(eval_count) + "\n")
+                    else:
 
-                    # log the top correct and incorrect papers
-                    ranking_output.write("TOP CITED PAPERS\n")
-                    log_top_rankings(true_citations, ranking_ids, train_ids, train_texts, ranking_output)
-                    incorrect_rankings = list(filter(lambda x: x not in true_citations, ranking_ids))
-                    ranking_output.write("TOP UNCITED PAPERS\n")
-                    log_top_rankings(incorrect_rankings, ranking_ids, train_ids, train_texts, ranking_output)
-                    ranking_output.write("TOP 20\n")
+                        # log the query paper and the top 10 candidate papers
+                        ranking_output.write("RANKING " + str(eval_index) + "\n")
+                        ranking_output.write("QUERY\n" + eval_ids[eval_index] + "\n")
+                        ranking_output.write("First cited at " + str(rank) + "\n")
 
-                    # log the
-                    for ranked_index, ranked_tuple in enumerate(rankings[:20]):
-                        ranked_score, ranked_train_index = ranked_tuple
-                        ranking_output.write("RANK = " + str(ranked_index + 1) + "; score = " + str(ranked_score) +
-                                            "; correct = " + str(ranking_ids[ranked_index] in true_citations) +
-                                             "; id = " + train_ids[ranked_train_index] + "\n")
-                    ranking_output.write("\n")
+                        # log the top correct and incorrect papers
+                        ranking_output.write("TOP CITED PAPERS\n")
+                        log_top_rankings(true_citations, ranking_ids, train_ids, train_texts, ranking_output)
+                        incorrect_rankings = list(filter(lambda x: x not in true_citations, ranking_ids))
+                        ranking_output.write("TOP UNCITED PAPERS\n")
+                        log_top_rankings(incorrect_rankings, ranking_ids, train_ids, train_texts, ranking_output)
+                        ranking_output.write("TOP 20\n")
+
+                        # log the
+                        for ranked_index, ranked_tuple in enumerate(rankings[:20]):
+                            ranked_score, ranked_train_index = ranked_tuple
+                            ranking_output.write("RANK = " + str(ranked_index + 1) + "; score = " + str(ranked_score) +
+                                                "; correct = " + str(ranking_ids[ranked_index] in true_citations) +
+                                                 "; id = " + train_ids[ranked_train_index] + "\n")
+                        ranking_output.write("\n")
 
     # calculate final evaluation score for the dataset
     if ranking_output is not None:
-        ranking_output.write(str(eval_score) + "\n")
-        ranking_output.write("matching citation count = " + str(matching_citation_count) + "\n")
         ranking_output.write("min rank = " + str(min_rank) + "\n")
-        ranking_output.write(str(sum(eval_score) / matching_citation_count) + "\n")
+        ranking_output.write(str(eval_sum / eval_count) + "\n")
     else:
-        print(eval_score)
-        print("matching citation count = " + str(matching_citation_count))
         print("min rank = " + str(min_rank))
-        print(str(sum(eval_score) / matching_citation_count))
+        print(str(eval_sum / eval_count))
 
 
 # given two sets of words from two papers, calculate the Jaccard similarity.
