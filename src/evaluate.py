@@ -152,15 +152,12 @@ def evaluate_model(model, use_titles, use_abstracts, is_test, gpu, start, end, l
                         ranking_output.write("QUERY\n" + eval_ids[eval_index] + "\n")
                         ranking_output.write("First cited at " + str(rank) + "\n")
 
-                        # log the top correct and incorrect papers
+                        # log the top actually cited papers
                         ranking_output.write("TOP CITED PAPERS\n")
                         log_top_rankings(true_citations, ranking_ids, train_ids, train_texts, ranking_output)
-                        incorrect_rankings = list(filter(lambda x: x not in true_citations, ranking_ids))
-                        ranking_output.write("TOP UNCITED PAPERS\n")
-                        log_top_rankings(incorrect_rankings, ranking_ids, train_ids, train_texts, ranking_output)
                         ranking_output.write("TOP 20\n")
 
-                        # log the
+                        # log the top-20 ranked papers
                         for ranked_index, ranked_tuple in enumerate(rankings[:20]):
                             ranked_score, ranked_train_index = ranked_tuple
                             ranking_output.write("RANK = " + str(ranked_index + 1) + "; score = " + str(ranked_score) +
