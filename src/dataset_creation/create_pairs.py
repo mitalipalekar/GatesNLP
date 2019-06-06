@@ -4,32 +4,43 @@
 # the sampled pairs to disk
 
 import json
-from tqdm import tqdm
 from gnlputils import read_dataset
 import random
-
-# total count of each type of pair to be split across train/dev/test
-CITED_PAIRS = 60000
-ONE_HOP = 0
-UNCITED_PAIRS = 60000
-
-# train/dev/test split
-TRAIN_PERCENT = 0.8
-DEV_PERCENT = 0.1
-TEST_PERCENT = 0.1
+import argparse
 
 # file paths
 SHARED_DIR: str = "/projects/instr/19sp/cse481n/GatesNLP/"
 TRAIN: str = SHARED_DIR + 'train.txt'
 DEV: str = SHARED_DIR + 'dev.txt'
 TEST: str = SHARED_DIR + 'test.txt'
-NAME: str = 'no_hop_tokenized'
-TRAIN_OUTPUT: str = SHARED_DIR + 'supervised_pairs/' + NAME + '_pairs_train.txt'
-DEV_OUTPUT: str = SHARED_DIR + 'supervised_pairs/' + NAME + '_pairs_dev.txt'
-TEST_OUTPUT: str = SHARED_DIR + 'supervised_pairs/' + NAME + '_pairs_test.txt'
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Arguments to be passed into the evaluation script.')
+    parser.add_argument('name', type=str, help='the name of the dataset we are creating')
+
+    # total count of each type of pair to be split across train/dev/test
+    parser.add_argument('cited', type=int, help='the number of total cited pairs to sample')
+    parser.add_argument('one_hop', type=int, help='the number of one-hop pairs to sample')
+    parser.add_argument('uncited', type=int, help='the number of total uncited pairs to sample')
+
+    # train/dev/test split
+    parser.add_argument('-train_percent', type=float,
+                        help='the percentage of the dataset to be used for training', default=0.8)
+    parser.add_argument('-dev_percent', type=float,
+                        help='the percentage of the dataset to be used for dev', default=0.1)
+    parser.add_argument('-test_percent', type=float,
+                        help='the percentage of the dataset to be used for test', default=0.1)
+
+    args = parser.parse_args()
+    create_pairwise_dataset(args.name, args.cited, args.one_hop, args.uncited, args.train_percent, args.dev_percent,
+                            args.test_percent)
+
+def create_pairwise_dataset(name, cited_count, one_hop_count, uncited_count, train_percent, dev_percent, test_percent):
+    train_output: str = SHARED_DIR + 'supervised_pairs/' + name + '_pairs_train.txt'
+    dev_output: str = SHARED_DIR + 'supervised_pairs/' + name + '_pairs_dev.txt'
+    test_output: str = SHARED_DIR + 'supervised_pairs/' + name + '_pairs_test.txt'
+
     # generate pairs
     train_text, train_citations = read_dataset(TRAIN)
     dev_text, dev_citations = read_dataset(DEV)
@@ -39,27 +50,27 @@ def main():
     dev_cited = generate_cited_pairs_across_datasets(dev_text, train_text, dev_citations)
     test_cited = generate_cited_pairs_across_datasets(test_text, train_text, test_citations)
 
-    train_uncited = generate_uncited_pairs(train_text, train_citations, int(UNCITED_PAIRS * TRAIN_PERCENT))
+    train_uncited = generate_uncited_pairs(train_text, train_citations, int(uncited_count * train_percent))
     dev_uncited = generate_uncited_pairs_across_datasets(dev_text, train_text, dev_citations,
-                                                         int(UNCITED_PAIRS * DEV_PERCENT))
+                                                         int(uncited_count * dev_percent))
     test_uncited = generate_uncited_pairs_across_datasets(test_text, train_text, test_citations,
-                                                          int(UNCITED_PAIRS * TEST_PERCENT))
+                                                          int(uncited_count * test_percent))
 
     # sample the results down to the desired size
-    train_cited = random.sample(train_cited, int(CITED_PAIRS * TRAIN_PERCENT))
-    dev_cited = random.sample(dev_cited, int(CITED_PAIRS * DEV_PERCENT))
-    test_cited = random.sample(test_cited, int(CITED_PAIRS * TEST_PERCENT))
+    train_cited = random.sample(train_cited, int(cited_count * train_percent))
+    dev_cited = random.sample(dev_cited, int(cited_count * dev_percent))
+    test_cited = random.sample(test_cited, int(cited_count * test_percent))
 
-    train_hops = random.sample(generate_one_hops(train_text, train_citations), int(ONE_HOP * TRAIN_PERCENT))
+    train_hops = random.sample(generate_one_hops(train_text, train_citations), int(one_hop_count * train_percent))
     dev_hops = random.sample(generate_one_hops_across_datasets(dev_text, train_text, dev_citations, train_citations),
-                             int(ONE_HOP * DEV_PERCENT))
+                             int(one_hop_count * dev_percent))
     test_hops = random.sample(generate_one_hops_across_datasets(test_text, train_text, test_citations, train_citations),
-                              int(ONE_HOP * TEST_PERCENT))
+                              int(one_hop_count * test_percent))
 
     # write pairs to disk
-    write_output(TRAIN_OUTPUT, train_cited + train_hops + train_uncited)
-    write_output(DEV_OUTPUT, dev_cited + dev_hops + dev_uncited)
-    write_output(TEST_OUTPUT, test_cited + test_hops + test_uncited)
+    write_output(train_output, train_cited + train_hops + train_uncited)
+    write_output(dev_output, dev_cited + dev_hops + dev_uncited)
+    write_output(test_output, test_cited + test_hops + test_uncited)
 
 
 # generate all "one-hop" pairs within text
