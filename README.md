@@ -12,6 +12,14 @@ Not officially sponsored by Gates, only inspired :)
 
 ## Run
 Run from project root. Ex: `python {PROJECT_ROOT}/src/*.py`
+The models we provide are:
+- Jaccard
+- TF IDF Cosine Similarity
+- TF IDF with NER Tagging
+- BERT Cosine Similarity
+- GloVe Word Mover's Distance
+- Supervised Neural Netowrk with Feedforward
+
 
 ## Evaluate and analyze rankings
 Run src/evaluate.py to get a full log of ranking stats or just scores (for using an AllenNLP model,
