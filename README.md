@@ -12,13 +12,15 @@ Not officially sponsored by Gates, only inspired :)
 
 ## Run
 Run from project root. Ex: `python {PROJECT_ROOT}/src/*.py`
-The models we provide are:
-- Jaccard
-- TF IDF Cosine Similarity
-- TF IDF with NER Tagging
-- BERT Cosine Similarity
-- GloVe Word Mover's Distance
-- Supervised Neural Netowrk with Feedforward
+
+The models we provide with our evaluation script (src/evaluate.py) use the following scoring functions for each query/candidate pair:
+- Jaccard similarity index
+- TF-IDF with cosine similarity
+- Confidence score from a supervised citation classifier (given a pair of paper texts, predicting if the first cites the second)
+
+Models in other scripts use these scoring functions:
+- BERT with cosine similarity (src/bert/bert_embeddings.py)
+- GloVe with cosine similarity and Word Mover's Distance (src/glove/glove_embeddings.py)
 
 
 ## Evaluate and analyze rankings
@@ -29,7 +31,7 @@ Run src/sample_ranking_examples.py to randomly sample examples from ranking logs
 
 Notes: update file paths in both files as appropriate, and refer to command-line help
 
-## AllenNLP for Pairwise Model
+## AllenNLP for Supervised Model
 
 Run to train
 
