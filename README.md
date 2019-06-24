@@ -1,7 +1,15 @@
-# GatesNLP
-CSE 481 N: NLP Capstone Project
+# GatesNLP: An Experimental Extension to Content-Based Citation Recommendation
+CSE 481 N: UW NLP Capstone Project
 
-Not officially sponsored by Gates, only inspired :) 
+Not officially sponsored by Gates, only inspired!
+
+This GitHub repo contains source code for content-based citation recommendation research conducted for UW's NLP capstone in Spring 2019.
+Below is the resulting report's abstract, and for more information, please read our
+full [report](https://github.com/mitalipalekar/GatesNLP/blob/master/GatesNLP_CSE_481_N_Final_Report.pdf).
+We provide instructions on how to run our existing code in the hopes that this can be a reference and starting point for
+future NLP students and researchers.
+
+For our University of Washington NLP capstone, we present an extension of prior work on content-based citation recommendation. Given a query paper’s text and candidate papers’ text, we generate a ranked list of candidate papers in which cited papers appear first. We experiment with a variety of supervised and unsupervised learning approaches to generate rankings as well as evaluate the effectiveness of our models’ rankings quantitatively and qualitatively. We find that our best model is TF-IDF, achieving a mean reciprocal rank of 0.31 on our test set. Finally, we release two new datasets of natural language processing and computer security papers to facilitate future academic research.
 
 ## Setup
 - download our [dataset](https://www.kaggle.com/mitalipalekar/gatesnlp) from Kaggle.
